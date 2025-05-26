@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -8,6 +8,27 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleGoToChat = () => {
+    navigate('/chat');
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  const handleRegister = () => {
+    navigate('/register');
+  };
+
+  const handleGetStarted = () => {
+    navigate('/register');
+  };
+
+  const handleSignIn = () => {
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-rose-50 dark:from-gray-900 dark:to-gray-800">
@@ -24,16 +45,16 @@ const Index = () => {
         <div className="flex items-center space-x-4">
           <ThemeToggle />
           {user ? (
-            <Button asChild>
-              <Link to="/chat">Go to Chat</Link>
+            <Button onClick={handleGoToChat}>
+              Go to Chat
             </Button>
           ) : (
             <div className="space-x-2">
-              <Button variant="outline" asChild>
-                <Link to="/login">Login</Link>
+              <Button variant="outline" onClick={handleLogin}>
+                Login
               </Button>
-              <Button asChild>
-                <Link to="/register">Sign Up</Link>
+              <Button onClick={handleRegister}>
+                Sign Up
               </Button>
             </div>
           )}
@@ -59,11 +80,11 @@ const Index = () => {
 
           {!user && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild className="text-lg px-8">
-                <Link to="/register">Get Started Free</Link>
+              <Button size="lg" onClick={handleGetStarted} className="text-lg px-8">
+                Get Started Free
               </Button>
-              <Button size="lg" variant="outline" asChild className="text-lg px-8">
-                <Link to="/login">Sign In</Link>
+              <Button size="lg" variant="outline" onClick={handleSignIn} className="text-lg px-8">
+                Sign In
               </Button>
             </div>
           )}

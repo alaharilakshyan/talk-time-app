@@ -12,7 +12,7 @@ export const useSocket = () => {
       // Initialize socket connection when user is authenticated
       // TODO: Replace with actual backend URL
       socketRef.current = io('http://localhost:3001', {
-        auth: {
+      auth: {
           token: token,
           userId: user.id,
         },
@@ -20,12 +20,12 @@ export const useSocket = () => {
 
       console.log('Socket.IO client initialized for Day 2 messaging');
 
-      return () => {
+    return () => {
         if (socketRef.current) {
           socketRef.current.disconnect();
           socketRef.current = null;
         }
-      };
+    };
     }
   }, [user, token]);
 

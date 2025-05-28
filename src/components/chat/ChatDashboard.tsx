@@ -21,23 +21,23 @@ export const ChatDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-rose-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto p-4">
-        {/* Header */}
+    {/* Header */}
         <header className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-rose-400 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">C</span>
-            </div>
+      <div className="flex items-center space-x-4">
+        <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-rose-400 rounded-lg flex items-center justify-center">
+          <span className="text-white font-bold text-sm">C</span>
+        </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">
-              ChatApp
-            </h1>
-          </div>
-          <div className="flex items-center space-x-2">
-            <ThemeToggle />
-            <Button variant="outline" onClick={handleLogout}>
-              Logout
-            </Button>
-          </div>
-        </header>
+          ChatApp
+        </h1>
+      </div>
+      <div className="flex items-center space-x-2">
+        <ThemeToggle />
+        <Button variant="outline" onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
+    </header>
 
         {/* Welcome Card */}
         <Card className="max-w-2xl mx-auto mb-8 border-orange-200 dark:border-orange-800">
@@ -103,6 +103,6 @@ export const ChatDashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+  </div>  
   );
 };

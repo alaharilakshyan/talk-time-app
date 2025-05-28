@@ -28,11 +28,11 @@
 ### 🧱 Tasks
 
 #### 🔧 Backend (To be implemented)
-- [ ] Init Node.js + Express server
-- [ ] Setup MongoDB Atlas connection
-- [ ] Create `User` model (username, email, passwordHash, avatar)
-- [ ] Auth routes: `/register`, `/login` (JWT-based)
-- [ ] Add CORS + basic middlewares
+- [x] Init Node.js + Express server
+- [x] Setup MongoDB Atlas connection
+- [x] Create `User` model (username, email, passwordHash, avatar)
+- [x] Auth routes: `/register`, `/login` (JWT-based)
+- [x] Add CORS + basic middlewares
 
 #### 🌐 Frontend (In Progress)
 - [x] Init Vite project + Tailwind CSS
@@ -62,11 +62,11 @@
 ### 🧱 Tasks
 
 #### 🔧 Backend
-- [ ] Define `Message` schema (senderId, receiverId, text, timestamp)
-- [ ] REST endpoint: `/messages/:userId` to fetch history
-- [ ] Socket.IO: `user_connected`, `send_message`, `receive_message`
-- [ ] Store incoming messages in MongoDB
-- [ ] Track online users via memory
+- [x] Define `Message` schema (senderId, receiverId, text, timestamp)
+- [x] REST endpoint: `/messages/:userId` to fetch history
+- [x] Socket.IO: `user_connected`, `send_message`, `receive_message`
+- [x] Store incoming messages in MongoDB
+- [x] Track online users via memory
 
 #### 🌐 Frontend
 - [ ] Build chat dashboard layout (sidebar + chat panel)

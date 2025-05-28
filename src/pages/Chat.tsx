@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { ChatDashboard } from '@/components/chat/ChatDashboard';
+import { ChatInterface } from '@/components/chat/ChatInterface';
 
 const Chat = () => {
-  return <ChatDashboard />;
+  return <ChatInterface />;
 };
 
 export default Chat;

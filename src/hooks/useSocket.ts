@@ -2,39 +2,22 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const { user, token } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-<<<<<<< HEAD
-    if (user && token) {
-      // Initialize socket connection when user is authenticated
-      // TODO: Replace with actual backend URL
-      socketRef.current = io('http://localhost:3001', {
-      auth: {
-          token: token,
-          userId: user.id,
-        },
-      });
-
-      console.log('Socket.IO client initialized for Day 2 messaging');
-
-    return () => {
-        if (socketRef.current) {
-          socketRef.current.disconnect();
-          socketRef.current = null;
-        }
-    };
-=======
     if (!user || !token) {
       if (socket) {
         socket.disconnect();
         setSocket(null);
+        setIsConnected(false);
       }
       return;
->>>>>>> a2dfc819e0b2316c9b944a01fef000253f0dbcd7
     }
 
     // Initialize socket connection
@@ -46,17 +29,45 @@ export const useSocket = () => {
     });
 
     newSocket.on('connect', () => {
-      console.log('Connected to socket server');
-      // Join user to their room for receiving messages
-      newSocket.emit('userOnline', { userId: user.id, username: user.username });
+      console.log('✅ Connected to Socket.IO as:', newSocket.id);
+      setIsConnected(true);
+      toast({
+        title: "Connected",
+        description: "Successfully connected to chat server",
+      });
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from socket server');
+      console.log('❌ Disconnected from server');
+      setIsConnected(false);
+      toast({
+        title: "Disconnected",
+        description: "Disconnected from server",
+        variant: "destructive"
+      });
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      console.error('⚠️ Connection Error:', error.message);
+      setIsConnected(false);
+      toast({
+        title: "Connection Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    });
+
+    newSocket.on('receive_message', (message) => {
+      console.log('📥 New message received:', message);
+      // This will be handled by the ChatInterface component
+    });
+
+    newSocket.on('user_online', ({ userId }) => {
+      console.log('🟢 User online:', userId);
+    });
+
+    newSocket.on('user_offline', ({ userId }) => {
+      console.log('🔴 User offline:', userId);
     });
 
     setSocket(newSocket);
@@ -64,7 +75,25 @@ export const useSocket = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [user, token]);
+  }, [user, token, toast]);
 
-  return socket;
+  const sendMessage = (receiverId: string, text: string) => {
+    return new Promise((resolve, reject) => {
+      if (!socket || !isConnected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+
+      socket.emit('send_message', { receiverId, text }, (response: any) => {
+        console.log('📤 Message response:', response);
+        if (response.success) {
+          resolve(response.message);
+        } else {
+          reject(new Error(response.error || 'Failed to send message'));
+        }
+      });
+    });
+  };
+
+  return { socket, isConnected, sendMessage };
 };

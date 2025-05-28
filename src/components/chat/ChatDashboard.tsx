@@ -54,14 +54,14 @@ export const ChatDashboard = () => {
               <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
                 <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mx-auto mb-2">
                   ✅
-                </div>
+          </div>
                 <h3 className="font-semibold text-sm mb-1">Authentication</h3>
                 <p className="text-xs text-muted-foreground">Secure JWT-based login system</p>
-              </div>
+        </div>
               <div className="p-4 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800">
                 <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900 rounded-lg flex items-center justify-center mx-auto mb-2">
                   🎨
-                </div>
+        </div>
                 <h3 className="font-semibold text-sm mb-1">Modern UI</h3>
                 <p className="text-xs text-muted-foreground">ShadCN components with warm theme</p>
               </div>

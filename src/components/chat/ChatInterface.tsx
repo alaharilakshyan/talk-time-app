@@ -1,160 +1,212 @@
-
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
+import { useToast } from '@/hooks/use-toast';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
-import { FloatingUserSidebar } from './FloatingUserSidebar';
+import { UserList } from './UserList';
 import { MessageNotification } from './MessageNotification';
-import { useSocket } from '@/hooks/useSocket';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Message {
   _id: string;
   senderId: {
     _id: string;
     username: string;
-    avatar?: string;
+    avatar: string;
   };
-  receiverId: string;
+  receiverId: {
+    _id: string;
+    username: string;
+    avatar: string;
+  };
   text: string;
   createdAt: string;
 }
 
 interface User {
-  id: string;
+  _id: string;
   username: string;
+  avatar: string;
   isOnline: boolean;
-  avatar?: string;
-  unreadCount?: number;
+  lastSeen: string | null;
 }
 
 export const ChatInterface = () => {
-  const { user } = useAuth();
-  const { socket, isConnected, sendMessage } = useSocket();
+  const { user, token } = useAuth();
+  const { socket, isConnected, onlineUsers } = useSocket();
   const { toast } = useToast();
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [users, setUsers] = useState<User[]>([
-    // Mock users for demo - replace with actual user fetching
-    { id: '68372686819e9e000265abee', username: 'Alice', isOnline: true, unreadCount: 2 },
-    { id: '68372686819e9e000265abef', username: 'Bob', isOnline: false, unreadCount: 0 },
-    { id: '68372686819e9e000265abeg', username: 'Charlie', isOnline: true, unreadCount: 1 }
-  ]);
   const [isSending, setIsSending] = useState(false);
   const [latestMessage, setLatestMessage] = useState<Message | null>(null);
 
-  // Socket event listeners
+  // Fetch users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch users');
+        const data = await response.json();
+        setUsers(data);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load users. Please try again later.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (token) {
+      fetchUsers();
+    }
+  }, [token, toast]);
+
+  // Fetch messages when a user is selected
+  useEffect(() => {
+    if (!selectedUserId || !token) return;
+
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/messages/${selectedUserId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+        if (!response.ok) throw new Error('Failed to fetch messages');
+        const data = await response.json();
+        setConversationMessages(data.messages);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load messages. Please try again later.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchMessages();
+  }, [selectedUserId, token, toast]);
+
+  // Handle incoming messages
   useEffect(() => {
     if (!socket) return;
 
     socket.on('receive_message', (message: Message) => {
-      console.log('📥 New message received:', message);
-      setMessages(prev => [...prev, message]);
-      setLatestMessage(message);
+      if (message.senderId._id === selectedUserId || message.receiverId._id === selectedUserId) {
+        setConversationMessages(prev => [...prev, message]);
+      }
       
-      setUsers(prev => prev.map(u => 
-        u.id === message.senderId._id 
-          ? { ...u, unreadCount: (u.unreadCount || 0) + 1 }
-          : u
-      ));
-    });
-
-    socket.on('user_online', ({ userId }: { userId: string }) => {
-      console.log('🟢 User online:', userId);
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, isOnline: true } : u
-      ));
-    });
-
-    socket.on('user_offline', ({ userId }: { userId: string }) => {
-      console.log('🔴 User offline:', userId);
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, isOnline: false } : u
-      ));
+      // Show notification for messages from non-selected users
+      if (message.senderId._id !== selectedUserId) {
+        setLatestMessage(message);
+      }
     });
 
     return () => {
       socket.off('receive_message');
-      socket.off('user_online');
-      socket.off('user_offline');
     };
-  }, [socket]);
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedUserId || !isConnected || isSending) return;
-
-    setIsSending(true);
-    try {
-      const message = await sendMessage(selectedUserId, newMessage.trim());
-      setMessages(prev => [...prev, message as Message]);
-      setNewMessage('');
-      toast({
-        title: "Message sent",
-        description: "Your message was delivered successfully",
-      });
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      toast({
-        title: "Failed to send message",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
+  }, [socket, selectedUserId]);
 
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
-    setUsers(prev => prev.map(u => 
-      u.id === userId ? { ...u, unreadCount: 0 } : u
-    ));
+    // Clear notification if it's from the selected user
+    if (latestMessage?.senderId._id === userId) {
+      setLatestMessage(null);
+    }
   };
 
-  const selectedUser = users.find(u => u.id === selectedUserId);
-  const conversationMessages = messages.filter(
-    msg => 
-      (msg.senderId._id === selectedUserId && msg.receiverId === user?.id) ||
-      (msg.senderId._id === user?.id && msg.receiverId === selectedUserId)
-  );
+  const handleSendMessage = async () => {
+    if (!socket || !selectedUserId || !newMessage.trim() || isSending) return;
+
+    setIsSending(true);
+    
+    socket.emit('send_message', {
+      receiverId: selectedUserId,
+      text: newMessage.trim()
+    }, (response: { success: boolean; message?: Message; error?: string }) => {
+      setIsSending(false);
+      
+      if (response.success && response.message) {
+        setConversationMessages(prev => [...prev, response.message]);
+        setNewMessage('');
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to send message. Please try again.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
+  console.log(users);
+  const selectedUser = users.find(u => u._id === selectedUserId);
 
   return (
-    <div className="h-screen flex w-full bg-gradient-to-br from-orange-50 to-rose-50 dark:from-gray-900 dark:to-gray-800 relative">
-      <FloatingUserSidebar 
-        users={users}
-        selectedUserId={selectedUserId}
-        onUserSelect={handleUserSelect}
-        isConnected={isConnected}
-      />
-
-      <div className="flex-1 flex flex-col ml-20">
-        <ChatHeader 
-          selectedUser={selectedUser}
-          isConnected={isConnected}
-        />
-
-        <ChatMessages 
+    <div className="h-[calc(100vh-4rem)] flex gap-4 max-w-6xl mx-auto">
+      {/* User List */}
+      <div className="w-80 bg-card border rounded-lg overflow-hidden flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="font-semibold">Contacts</h2>
+          <Badge variant={isConnected ? "default" : "destructive"}>
+            {isConnected ? "Connected" : "Disconnected"}
+          </Badge>
+        </div>
+        <UserList
+          users={users}
           selectedUserId={selectedUserId}
-          conversationMessages={conversationMessages}
-          currentUserId={user?.id}
-        />
-
-        <ChatInput 
-          selectedUserId={selectedUserId}
-          newMessage={newMessage}
-          setNewMessage={setNewMessage}
-          isConnected={isConnected}
-          isSending={isSending}
-          onSendMessage={handleSendMessage}
+          onUserSelect={handleUserSelect}
+          onlineUsers={onlineUsers}
         />
       </div>
 
-      {latestMessage && user && (
-        <MessageNotification 
-          message={latestMessage} 
-          currentUserId={user.id}
+      {/* Chat Area */}
+      <div className="flex-1 bg-card border rounded-lg overflow-hidden flex flex-col">
+        {selectedUser ? (
+          <>
+            <ChatHeader
+              selectedUser={selectedUser}
+              isOnline={onlineUsers.has(selectedUser._id)}
+              isConnected={isConnected}
+            />
+            <ChatMessages
+              messages={conversationMessages}
+              currentUserId={user?._id}
+            />
+            <ChatInput
+              value={newMessage}
+              onChange={setNewMessage}
+              onSend={handleSendMessage}
+              isDisabled={!isConnected || isSending}
+            />
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            Select a contact to start chatting
+          </div>
+        )}
+      </div>
+
+      {/* Message Notification */}
+      {latestMessage && (
+        <MessageNotification
+          message={latestMessage}
+          onClose={() => setLatestMessage(null)}
         />
       )}
     </div>

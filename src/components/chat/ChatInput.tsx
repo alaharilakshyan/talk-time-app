@@ -1,53 +1,53 @@
-
-import React from 'react';
+import React, { KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Send } from 'lucide-react';
 
 interface ChatInputProps {
-  selectedUserId: string | null;
-  newMessage: string;
-  setNewMessage: (message: string) => void;
-  isConnected: boolean;
-  isSending: boolean;
-  onSendMessage: () => void;
+  value: string;
+  onChange: (value: string) => void;
+  onSend: () => void;
+  isDisabled: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
-  selectedUserId,
-  newMessage,
-  setNewMessage,
-  isConnected,
-  isSending,
-  onSendMessage
+  value,
+  onChange,
+  onSend,
+  isDisabled
 }) => {
-  if (!selectedUserId) return null;
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      onSendMessage();
+  const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (value.trim() && !isDisabled) {
+        onSend();
+      }
     }
   };
 
   return (
-    <div className="p-4 border-t border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-900">
-      <div className="flex items-center space-x-2">
-        <Input
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={isConnected ? "Type a message..." : "Disconnected - cannot send messages"}
-          className="flex-1"
-          disabled={!isConnected || isSending}
-          onKeyPress={handleKeyPress}
+    <div className="p-4 border-t">
+      <div className="flex gap-2">
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyPress}
+          placeholder="Type a message..."
+          className="min-h-[20px] max-h-[120px] resize-none"
+          disabled={isDisabled}
         />
-        <Button 
-          onClick={onSendMessage}
-          disabled={!isConnected || isSending || !newMessage.trim()}
-          className="bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600"
+        <Button
+          size="icon"
+          onClick={onSend}
+          disabled={!value.trim() || isDisabled}
         >
-          <Send className="w-4 h-4" />
+          <Send className="h-4 w-4" />
+          <span className="sr-only">Send message</span>
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        Press Enter to send, Shift + Enter for new line
+      </p>
     </div>
   );
 };

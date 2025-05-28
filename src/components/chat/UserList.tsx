@@ -1,79 +1,92 @@
-
 import React from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 interface User {
-  id: string;
+  _id: string;
   username: string;
-  isOnline: boolean;
-  avatar?: string;
+  avatar: string;
+  lastSeen: string | null;
 }
 
 interface UserListProps {
   users: User[];
   selectedUserId: string | null;
   onUserSelect: (userId: string) => void;
+  onlineUsers: Set<string>;
 }
 
-export const UserList: React.FC<UserListProps> = ({ 
-  users, 
-  selectedUserId, 
-  onUserSelect 
+export const UserList: React.FC<UserListProps> = ({
+  users,
+  selectedUserId,
+  onUserSelect,
+  onlineUsers
 }) => {
+  const formatLastSeen = (lastSeen: string | null) => {
+    if (!lastSeen) return 'Never';
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    
+    // Less than a minute
+    if (diff < 60000) {
+      return 'Just now';
+    }
+    // Less than an hour
+    if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000);
+      return `${minutes}m ago`;
+    }
+    // Less than a day
+    if (diff < 86400000) {
+      const hours = Math.floor(diff / 3600000);
+      return `${hours}h ago`;
+    }
+    // More than a day
+    const days = Math.floor(diff / 86400000);
+    return `${days}d ago`;
+  };
+
   return (
     <ScrollArea className="flex-1">
-      <div className="p-2">
-        {users.length === 0 ? (
-          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-            <p className="text-sm">No other users online</p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {users.map((user) => (
-              <button
-                key={user.id}
-                onClick={() => onUserSelect(user.id)}
-                className={cn(
-                  "w-full p-3 rounded-lg text-left transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/20",
-                  selectedUserId === user.id 
-                    ? "bg-orange-100 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800" 
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+      <div className="p-2 space-y-2">
+        {users.map((user) => {
+          const isOnline = onlineUsers.has(user._id);
+          
+          return (
+            <button
+              key={user._id}
+              onClick={() => onUserSelect(user._id)}
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-lg transition-colors",
+                "hover:bg-accent hover:text-accent-foreground",
+                selectedUserId === user._id && "bg-accent text-accent-foreground",
+                "relative"
+              )}
+            >
+              <div className="relative">
+                <Avatar>
+                  <AvatarImage src={user.avatar} alt={user.username} />
+                  <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-background" />
                 )}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-rose-400 rounded-full flex items-center justify-center">
-                      <span className="text-white font-semibold text-sm">
-                        {user.username.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    {/* Online indicator */}
-                    <div 
-                      className={cn(
-                        "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900",
-                        user.isOnline ? "bg-green-500" : "bg-gray-400"
-                      )}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {user.username}
-                    </p>
-                    <p className={cn(
-                      "text-xs",
-                      user.isOnline 
-                        ? "text-green-600 dark:text-green-400" 
-                        : "text-gray-500 dark:text-gray-400"
-                    )}>
-                      {user.isOnline ? 'Online' : 'Offline'}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+              </div>
+              
+              <div className="flex-1 text-left">
+                <div className="font-medium">{user.username}</div>
+                {!isOnline && (
+                  <p className="text-xs text-muted-foreground">
+                    Last seen: {formatLastSeen(user.lastSeen)}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </ScrollArea>
   );

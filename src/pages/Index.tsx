@@ -1,147 +1,163 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
-import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Shield, Zap, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MessageCircle, Users, Zap, Shield, ArrowRight, Sparkles } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
-  const { isConnected, onlineUsers } = useSocket();
-  const navigate = useNavigate();
 
-  const handleStartChatting = () => {
-    navigate('/chat');
-  };
-
-  const handleGetStarted = () => {
-    navigate('/register');
-  };
-
-  const handleSignIn = () => {
-    navigate('/login');
-  };
+  const features = [
+    {
+      icon: MessageCircle,
+      title: "Real-time Messaging",
+      description: "Instant message delivery with socket connections for seamless communication.",
+      gradient: "from-blue-500 to-cyan-500"
+    },
+    {
+      icon: Users,
+      title: "User Management",
+      description: "See who's online, manage contacts, and track user presence efficiently.",
+      gradient: "from-purple-500 to-pink-500"
+    },
+    {
+      icon: Zap,
+      title: "Lightning Fast",
+      description: "Optimized performance with intelligent caching and modern architecture.",
+      gradient: "from-yellow-500 to-orange-500"
+    },
+    {
+      icon: Shield,
+      title: "Secure & Private",
+      description: "End-to-end encryption with JWT authentication for maximum security.",
+      gradient: "from-green-500 to-emerald-500"
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Hero Section */}
-      <div className="container mx-auto px-6 py-16">
-        <div className="text-center space-y-8 mb-16">
-          <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                Real-time Chat
-              </span>
+      <section className="flex-1 flex items-center justify-center px-6 py-20">
+        <div className="max-w-6xl mx-auto text-center space-y-8">
+          {/* Hero Content */}
+          <div className="space-y-6 animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-white/20 backdrop-blur-sm">
+              <Sparkles className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium">Welcome to the future of messaging</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-bold gradient-text leading-tight">
+              Connect & Chat
               <br />
-              <span className="text-foreground">Made Simple</span>
+              <span className="text-4xl md:text-6xl">in Real-time</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Connect instantly with friends and colleagues through our modern, secure chat platform. 
-              Built with cutting-edge technology for the best real-time experience.
+            
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Experience seamless communication with our modern chat platform. 
+              Built with cutting-edge technology for instant, secure messaging.
             </p>
           </div>
 
-          {user ? (
-            <div className="flex flex-col items-center space-y-4">
-              <div className="flex items-center space-x-4">
-                <Badge variant={isConnected ? "default" : "destructive"}>
-                  {isConnected ? 'Connected' : 'Disconnected'}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  {onlineUsers.size} users online
-                </span>
-              </div>
-              <Button size="lg" onClick={handleStartChatting} className="text-lg px-8">
-                <MessageCircle className="h-5 w-5 mr-2" />
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up">
+            <Button 
+              asChild 
+              size="lg" 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 py-6 text-lg rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 group"
+            >
+              <Link to="/chat">
                 Start Chatting
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" onClick={handleGetStarted} className="text-lg px-8">
-                Get Started Free
-              </Button>
-              <Button size="lg" variant="outline" onClick={handleSignIn} className="text-lg px-8">
-                Sign In
-              </Button>
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20 px-8 py-6 text-lg rounded-xl"
+            >
+              Learn More
+            </Button>
+          </div>
+
+          {/* User Welcome */}
+          {user && (
+            <div className="mt-12 p-6 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 max-w-md mx-auto animate-bounce-subtle">
+              <p className="text-lg">
+                Welcome back, <span className="font-semibold gradient-text">{user.username}</span>! 
+                Ready to continue your conversations?
+              </p>
             </div>
           )}
         </div>
+      </section>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <Card className="border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-                <Zap className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <CardTitle className="text-xl">Lightning Fast</CardTitle>
-              <CardDescription>
-                Real-time messaging with Socket.IO technology for instant delivery
-              </CardDescription>
-            </CardHeader>
-          </Card>
+      {/* Features Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-4xl font-bold gradient-text">
+              Why Choose TalkTime?
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Discover the features that make our platform the perfect choice for modern communication.
+            </p>
+          </div>
 
-          <Card className="border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <CardTitle className="text-xl">Secure & Private</CardTitle>
-              <CardDescription>
-                End-to-end security with JWT authentication and encrypted communications
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="border-indigo-200 dark:border-indigo-800 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-4">
-                <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <CardTitle className="text-xl">User Presence</CardTitle>
-              <CardDescription>
-                See who's online and track user activity in real-time
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <Card 
+                key={feature.title}
+                className="group relative overflow-hidden bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <CardHeader className="space-y-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+                
+                {/* Hover gradient overlay */}
+                <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+              </Card>
+            ))}
+          </div>
         </div>
+      </section>
 
-        {/* Welcome Card for logged in users */}
-        {user && (
-          <Card className="max-w-2xl mx-auto border-blue-200 dark:border-blue-800">
-            <CardHeader>
-              <CardTitle className="text-center text-xl">
-                Welcome back, <span className="text-blue-600 dark:text-blue-400">{user.username}</span>!
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Your chat experience is ready. Connect with others and start conversations.
+      {/* Bottom CTA */}
+      <section className="py-16 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-xl border-white/20 p-8">
+            <CardContent className="space-y-6">
+              <h3 className="text-3xl font-bold gradient-text">
+                Ready to Get Started?
+              </h3>
+              <p className="text-lg text-muted-foreground">
+                Join thousands of users already experiencing the future of messaging.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <MessageCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h3 className="font-semibold text-sm mb-1">Real-time Chat</h3>
-                  <p className="text-xs text-muted-foreground">Instant messaging with live status</p>
-                </div>
-                <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
-                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h3 className="font-semibold text-sm mb-1">Online Users</h3>
-                  <p className="text-xs text-muted-foreground">See who's available to chat</p>
-                </div>
-              </div>
+              <Button 
+                asChild 
+                size="lg"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 py-6 text-lg rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300"
+              >
+                <Link to="/chat">
+                  Open Chat Now
+                  <MessageCircle className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
             </CardContent>
           </Card>
-        )}
-      </div>
+        </div>
+      </section>
     </div>
   );
 };

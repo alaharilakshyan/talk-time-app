@@ -47,13 +47,16 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 p-6 space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className={cn("flex items-start gap-2 max-w-[80%]", i % 2 === 0 ? "ml-auto flex-row-reverse" : "mr-auto")}>
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-[200px]" />
-              <Skeleton className="h-4 w-[150px]" />
+          <div key={i} className={cn(
+            "flex items-start gap-3 max-w-[80%] animate-pulse",
+            i % 2 === 0 ? "ml-auto flex-row-reverse" : "mr-auto"
+          )}>
+            <Skeleton className="h-10 w-10 rounded-full bg-white/20" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-[200px] bg-white/20" />
+              <Skeleton className="h-4 w-[150px] bg-white/20" />
             </div>
           </div>
         ))}
@@ -62,48 +65,48 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   }
 
   return (
-    <ScrollArea ref={scrollRef} className="flex-1 p-4">
-      <div className="space-y-4">
+    <ScrollArea ref={scrollRef} className="flex-1 p-6">
+      <div className="space-y-6">
         {messages.map((message) => {
           const isCurrentUser = message.senderId._id === currentUserId;
-          const sender = isCurrentUser ? message.senderId : message.senderId;
+          const sender = message.senderId;
           
           return (
             <div
               key={message._id}
               className={cn(
-                "flex items-start gap-2 max-w-[80%]",
+                "flex items-start gap-3 max-w-[75%] animate-fade-in",
                 isCurrentUser ? "ml-auto flex-row-reverse" : "mr-auto"
               )}
             >
-              <Avatar className="h-8 w-8 flex-shrink-0">
+              <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-white/20">
                 <AvatarImage 
                   src={sender.avatar}
                   alt={sender.username}
                 />
-                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
                   {sender.username[0].toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
               <div
                 className={cn(
-                  "rounded-lg px-3 py-2 text-sm max-w-full",
+                  "rounded-2xl px-4 py-3 text-sm max-w-full backdrop-blur-sm border",
                   isCurrentUser
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white border-white/20 shadow-lg"
+                    : "bg-white/10 text-foreground border-white/20 shadow-lg"
                 )}
               >
                 {!isCurrentUser && (
-                  <p className="text-xs font-medium mb-1 opacity-70">
+                  <p className="text-xs font-medium mb-2 opacity-70">
                     {sender.username}
                   </p>
                 )}
-                <p className="break-words">{message.text}</p>
+                <p className="break-words leading-relaxed">{message.text}</p>
                 <span className={cn(
-                  "text-[10px] select-none mt-1 block",
+                  "text-[10px] select-none mt-2 block opacity-70",
                   isCurrentUser
-                    ? "text-primary-foreground/70"
+                    ? "text-white/80"
                     : "text-muted-foreground"
                 )}>
                   {formatTime(message.createdAt)}

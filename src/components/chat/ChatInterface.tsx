@@ -33,6 +33,7 @@ interface User {
   _id: string;
   username: string;
   avatar: string;
+  email?: string;
   isOnline: boolean;
   lastSeen: string | null;
 }
@@ -128,6 +129,7 @@ export const ChatInterface = () => {
     if (!socket) return;
 
     socket.on('receive_message', (message: Message) => {
+      console.log('Received message:', message);
       addMessage(message);
       
       // Show notification for messages from non-selected users
@@ -160,9 +162,12 @@ export const ChatInterface = () => {
       setIsSending(false);
       
       if (response.success && response.message) {
+        console.log('Message sent successfully:', response.message);
+        // Add the sent message to cache immediately
         addMessage(response.message);
         setNewMessage('');
       } else {
+        console.error('Failed to send message:', response.error);
         toast({
           title: "Error",
           description: response.error || "Failed to send message. Please try again.",
@@ -188,9 +193,9 @@ export const ChatInterface = () => {
   if (!user) return null;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex gap-4 max-w-7xl mx-auto p-4">
+    <div className="h-[calc(100vh-4rem)] flex gap-6 max-w-7xl mx-auto p-6">
       {/* User List */}
-      <div className="w-80 bg-card border rounded-lg overflow-hidden flex flex-col">
+      <div className="w-80 bg-card/50 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         <UserList
           users={users}
           selectedUserId={selectedUserId}
@@ -201,15 +206,15 @@ export const ChatInterface = () => {
           isRefreshing={isRefreshing}
         />
         
-        <div className="p-3 border-t">
-          <Badge variant={isConnected ? "default" : "destructive"} className="w-full justify-center">
+        <div className="p-4 border-t border-white/10">
+          <Badge variant={isConnected ? "default" : "destructive"} className="w-full justify-center backdrop-blur-sm">
             {isConnected ? "Connected" : "Disconnected"}
           </Badge>
         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-card border rounded-lg overflow-hidden flex flex-col">
+      <div className="flex-1 bg-card/50 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         {selectedUser ? (
           <>
             <ChatHeader

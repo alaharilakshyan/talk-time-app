@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
@@ -60,7 +59,7 @@ export const ChatInterface = () => {
 
   const selectedUser = users.find(u => u._id === selectedUserId);
   const conversationMessages = selectedUserId && user 
-    ? getCachedMessages(user._id, selectedUserId) 
+    ? getCachedMessages(user.id, selectedUserId) 
     : [];
 
   // Fetch users
@@ -79,7 +78,7 @@ export const ChatInterface = () => {
   const fetchMessages = async (userId: string) => {
     if (!token || !user) return;
     
-    setCacheLoading(user._id, userId, true);
+    setCacheLoading(user.id, userId, true);
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/messages/${userId}`,
@@ -87,9 +86,9 @@ export const ChatInterface = () => {
       );
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
-      setCachedMessages(user._id, userId, data.messages);
+      setCachedMessages(user.id, userId, data.messages);
     } finally {
-      setCacheLoading(user._id, userId, false);
+      setCacheLoading(user.id, userId, false);
     }
   };
 
@@ -110,7 +109,7 @@ export const ChatInterface = () => {
   // Load messages when user is selected
   useEffect(() => {
     if (selectedUserId && user) {
-      const cached = getCachedMessages(user._id, selectedUserId);
+      const cached = getCachedMessages(user.id, selectedUserId);
       if (cached.length === 0) {
         fetchMessages(selectedUserId).catch(error => {
           console.error('Error fetching messages:', error);
@@ -133,7 +132,7 @@ export const ChatInterface = () => {
       addMessage(message);
       
       // Show notification for messages from non-selected users
-      if (message.senderId._id !== selectedUserId) {
+      if (message.senderId.id !== selectedUserId) {
         setLatestMessage(message);
       }
     });
@@ -145,7 +144,7 @@ export const ChatInterface = () => {
 
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
-    if (latestMessage?.senderId._id === userId) {
+    if (latestMessage?.senderId.id === userId) {
       setLatestMessage(null);
     }
   };
@@ -163,7 +162,6 @@ export const ChatInterface = () => {
       
       if (response.success && response.message) {
         console.log('Message sent successfully:', response.message);
-        // Add the sent message to cache immediately
         addMessage(response.message);
         setNewMessage('');
       } else {
@@ -201,7 +199,7 @@ export const ChatInterface = () => {
           selectedUserId={selectedUserId}
           onUserSelect={handleUserSelect}
           onlineUsers={onlineUsers}
-          currentUserId={user._id}
+          currentUserId={user.id}
           onRefresh={handleRefreshUsers}
           isRefreshing={isRefreshing}
         />
@@ -226,8 +224,8 @@ export const ChatInterface = () => {
             />
             <ChatMessages
               messages={conversationMessages}
-              currentUserId={user._id}
-              isLoading={isCacheLoading(user._id, selectedUserId!)}
+              currentUserId={user.id}
+              isLoading={isCacheLoading(user.id, selectedUserId!)}
             />
             <ChatInput
               value={newMessage}

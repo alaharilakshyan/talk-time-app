@@ -3,23 +3,18 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
+import { Badge } from '@/components/ui/badge';
+import { MessageCircle, Shield, Zap, Users } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
+  const { isConnected, onlineUsers } = useSocket();
   const navigate = useNavigate();
 
-  const handleGoToChat = () => {
+  const handleStartChatting = () => {
     navigate('/chat');
-  };
-
-  const handleLogin = () => {
-    navigate('/login');
-  };
-
-  const handleRegister = () => {
-    navigate('/register');
   };
 
   const handleGetStarted = () => {
@@ -31,42 +26,13 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-rose-50 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <header className="flex items-center justify-between p-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-rose-400 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">C</span>
-          </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">
-            ChatApp
-          </h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <ThemeToggle />
-          {user ? (
-            <Button onClick={handleGoToChat}>
-              Go to Chat
-            </Button>
-          ) : (
-            <div className="space-x-2">
-              <Button variant="outline" onClick={handleLogin}>
-                Login
-              </Button>
-              <Button onClick={handleRegister}>
-                Sign Up
-              </Button>
-            </div>
-          )}
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20">
       {/* Hero Section */}
-      <main className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-6 py-16">
         <div className="text-center space-y-8 mb-16">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-              <span className="bg-gradient-to-r from-orange-600 via-rose-500 to-amber-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
                 Real-time Chat
               </span>
               <br />
@@ -78,7 +44,22 @@ const Index = () => {
             </p>
           </div>
 
-          {!user && (
+          {user ? (
+            <div className="flex flex-col items-center space-y-4">
+              <div className="flex items-center space-x-4">
+                <Badge variant={isConnected ? "default" : "destructive"}>
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {onlineUsers.size} users online
+                </span>
+              </div>
+              <Button size="lg" onClick={handleStartChatting} className="text-lg px-8">
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Start Chatting
+              </Button>
+            </div>
+          ) : (
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" onClick={handleGetStarted} className="text-lg px-8">
                 Get Started Free
@@ -92,10 +73,10 @@ const Index = () => {
 
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <Card className="border-orange-200 dark:border-orange-800 hover:shadow-lg transition-shadow">
+          <Card className="border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">⚡</span>
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+                <Zap className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <CardTitle className="text-xl">Lightning Fast</CardTitle>
               <CardDescription>
@@ -104,10 +85,10 @@ const Index = () => {
             </CardHeader>
           </Card>
 
-          <Card className="border-rose-200 dark:border-rose-800 hover:shadow-lg transition-shadow">
+          <Card className="border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">🔒</span>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
+                <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <CardTitle className="text-xl">Secure & Private</CardTitle>
               <CardDescription>
@@ -116,63 +97,51 @@ const Index = () => {
             </CardHeader>
           </Card>
 
-          <Card className="border-amber-200 dark:border-amber-800 hover:shadow-lg transition-shadow">
+          <Card className="border-indigo-200 dark:border-indigo-800 hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">📞</span>
+              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-4">
+                <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <CardTitle className="text-xl">Voice Calls</CardTitle>
+              <CardTitle className="text-xl">User Presence</CardTitle>
               <CardDescription>
-                Crystal clear audio calls with WebRTC technology (Coming in Day 3!)
+                See who's online and track user activity in real-time
               </CardDescription>
             </CardHeader>
           </Card>
         </div>
 
-        {/* Development Status */}
-        <Card className="max-w-4xl mx-auto border-emerald-200 dark:border-emerald-800">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center flex items-center justify-center space-x-2">
-              <span>🚀</span>
-              <span>Development Progress</span>
-            </CardTitle>
-            <CardDescription className="text-center">
-              Follow our 3-day development journey
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-2xl">✅</span>
+        {/* Welcome Card for logged in users */}
+        {user && (
+          <Card className="max-w-2xl mx-auto border-blue-200 dark:border-blue-800">
+            <CardHeader>
+              <CardTitle className="text-center text-xl">
+                Welcome back, <span className="text-blue-600 dark:text-blue-400">{user.username}</span>!
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Your chat experience is ready. Connect with others and start conversations.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <MessageCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1">Real-time Chat</h3>
+                  <p className="text-xs text-muted-foreground">Instant messaging with live status</p>
                 </div>
-                <h3 className="font-semibold text-lg">Day 1 - Complete</h3>
-                <p className="text-sm text-muted-foreground">
-                  Auth system, modern UI, theme toggle, and foundation setup
-                </p>
-              </div>
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-2xl">🔄</span>
+                <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1">Online Users</h3>
+                  <p className="text-xs text-muted-foreground">See who's available to chat</p>
                 </div>
-                <h3 className="font-semibold text-lg">Day 2 - In Progress</h3>
-                <p className="text-sm text-muted-foreground">
-                  Real-time messaging, chat UI, and Socket.IO integration
-                </p>
               </div>
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-2xl">📅</span>
-                </div>
-                <h3 className="font-semibold text-lg">Day 3 - Planned</h3>
-                <p className="text-sm text-muted-foreground">
-                  Audio calls, final polish, and deployment
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

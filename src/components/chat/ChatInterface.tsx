@@ -1,14 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { useToast } from '@/hooks/use-toast';
+import { useMessageCache } from '@/hooks/useMessageCache';
+import { useRefresher } from '@/hooks/useRefresher';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { UserList } from './UserList';
 import { MessageNotification } from './MessageNotification';
+import { EmptyChat } from './EmptyChat';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface Message {
   _id: string;
@@ -38,78 +41,94 @@ export const ChatInterface = () => {
   const { user, token } = useAuth();
   const { socket, isConnected, onlineUsers } = useSocket();
   const { toast } = useToast();
+  const { refresh, isRefreshing } = useRefresher();
+  const {
+    getCachedMessages,
+    setCachedMessages,
+    addMessage,
+    isLoading: isCacheLoading,
+    setLoading: setCacheLoading,
+    clearCache
+  } = useMessageCache();
+
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [latestMessage, setLatestMessage] = useState<Message | null>(null);
 
+  const selectedUser = users.find(u => u._id === selectedUserId);
+  const conversationMessages = selectedUserId && user 
+    ? getCachedMessages(user._id, selectedUserId) 
+    : [];
+
   // Fetch users
+  const fetchUsers = async () => {
+    if (!token) return;
+    
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch users');
+    const data = await response.json();
+    setUsers(data);
+  };
+
+  // Fetch messages for selected user
+  const fetchMessages = async (userId: string) => {
+    if (!token || !user) return;
+    
+    setCacheLoading(user._id, userId, true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/messages/${userId}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Failed to fetch messages');
+      const data = await response.json();
+      setCachedMessages(user._id, userId, data.messages);
+    } finally {
+      setCacheLoading(user._id, userId, false);
+    }
+  };
+
+  // Initial data load
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) throw new Error('Failed to fetch users');
-        const data = await response.json();
-        setUsers(data);
-      } catch (error) {
+    if (token) {
+      fetchUsers().catch(error => {
         console.error('Error fetching users:', error);
         toast({
           title: "Error",
           description: "Failed to load users. Please try again later.",
           variant: "destructive",
         });
-      }
-    };
-
-    if (token) {
-      fetchUsers();
+      });
     }
   }, [token, toast]);
 
-  // Fetch messages when a user is selected
+  // Load messages when user is selected
   useEffect(() => {
-    if (!selectedUserId || !token) return;
-
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/messages/${selectedUserId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        );
-        if (!response.ok) throw new Error('Failed to fetch messages');
-        const data = await response.json();
-        setConversationMessages(data.messages);
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load messages. Please try again later.",
-          variant: "destructive",
+    if (selectedUserId && user) {
+      const cached = getCachedMessages(user._id, selectedUserId);
+      if (cached.length === 0) {
+        fetchMessages(selectedUserId).catch(error => {
+          console.error('Error fetching messages:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load messages. Please try again later.",
+            variant: "destructive",
+          });
         });
       }
-    };
-
-    fetchMessages();
-  }, [selectedUserId, token, toast]);
+    }
+  }, [selectedUserId, user, getCachedMessages, toast]);
 
   // Handle incoming messages
   useEffect(() => {
     if (!socket) return;
 
     socket.on('receive_message', (message: Message) => {
-      if (message.senderId._id === selectedUserId || message.receiverId._id === selectedUserId) {
-        setConversationMessages(prev => [...prev, message]);
-      }
+      addMessage(message);
       
       // Show notification for messages from non-selected users
       if (message.senderId._id !== selectedUserId) {
@@ -120,11 +139,10 @@ export const ChatInterface = () => {
     return () => {
       socket.off('receive_message');
     };
-  }, [socket, selectedUserId]);
+  }, [socket, selectedUserId, addMessage]);
 
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
-    // Clear notification if it's from the selected user
     if (latestMessage?.senderId._id === userId) {
       setLatestMessage(null);
     }
@@ -142,7 +160,7 @@ export const ChatInterface = () => {
       setIsSending(false);
       
       if (response.success && response.message) {
-        setConversationMessages(prev => [...prev, response.message]);
+        addMessage(response.message);
         setNewMessage('');
       } else {
         toast({
@@ -154,25 +172,40 @@ export const ChatInterface = () => {
     });
   };
 
-  console.log(users);
-  const selectedUser = users.find(u => u._id === selectedUserId);
+  const handleRefresh = () => {
+    refresh(async () => {
+      await fetchUsers();
+      if (selectedUserId) {
+        await fetchMessages(selectedUserId);
+      }
+    });
+  };
+
+  const handleRefreshUsers = () => {
+    refresh(fetchUsers, { showToast: false });
+  };
+
+  if (!user) return null;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex gap-4 max-w-6xl mx-auto">
+    <div className="h-[calc(100vh-4rem)] flex gap-4 max-w-7xl mx-auto p-4">
       {/* User List */}
       <div className="w-80 bg-card border rounded-lg overflow-hidden flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold">Contacts</h2>
-          <Badge variant={isConnected ? "default" : "destructive"}>
-            {isConnected ? "Connected" : "Disconnected"}
-          </Badge>
-        </div>
         <UserList
           users={users}
           selectedUserId={selectedUserId}
           onUserSelect={handleUserSelect}
           onlineUsers={onlineUsers}
+          currentUserId={user._id}
+          onRefresh={handleRefreshUsers}
+          isRefreshing={isRefreshing}
         />
+        
+        <div className="p-3 border-t">
+          <Badge variant={isConnected ? "default" : "destructive"} className="w-full justify-center">
+            {isConnected ? "Connected" : "Disconnected"}
+          </Badge>
+        </div>
       </div>
 
       {/* Chat Area */}
@@ -183,10 +216,13 @@ export const ChatInterface = () => {
               selectedUser={selectedUser}
               isOnline={onlineUsers.has(selectedUser._id)}
               isConnected={isConnected}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
             />
             <ChatMessages
               messages={conversationMessages}
-              currentUserId={user?._id}
+              currentUserId={user._id}
+              isLoading={isCacheLoading(user._id, selectedUserId!)}
             />
             <ChatInput
               value={newMessage}
@@ -196,9 +232,7 @@ export const ChatInterface = () => {
             />
           </>
         ) : (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            Select a contact to start chatting
-          </div>
+          <EmptyChat />
         )}
       </div>
 

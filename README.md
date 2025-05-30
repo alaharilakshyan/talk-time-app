@@ -1,73 +1,89 @@
-# Welcome to your Lovable project
+# Talk Time Chat Backend
 
-## Project info
+A real-time chat application backend built with Node.js, Express, and Socket.IO.
 
-**URL**: https://lovable.dev/projects/2c927ffe-7778-47df-9a5b-2bf1e10ab517
+## Features
 
-## How can I edit this code?
+- Real-time messaging using Socket.IO
+- User authentication and authorization
+- RESTful API endpoints
+- TypeScript support
+- Modern development setup with Vite
 
-There are several ways of editing your application.
+## Prerequisites
 
-**Use Lovable**
+- Node.js (v18 or higher)
+- npm or bun package manager
+- TypeScript knowledge
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2c927ffe-7778-47df-9a5b-2bf1e10ab517) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Runtime**: Node.js
+- **Framework**: Vite + React
+- **Language**: TypeScript
+- **Real-time Communication**: Socket.IO
+- **UI Components**: shadcn/ui
+- **Styling**: Tailwind CSS
+- **Form Handling**: React Hook Form
+- **Validation**: Zod
+- **State Management**: TanStack Query
 
-**Use your preferred IDE**
+## Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/talk-time-app.git
+cd talk-time-app
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies:
+```bash
+npm install
+# or if using bun
+bun install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Start the development server:
+```bash
+npm run dev
+# or
+bun dev
+```
 
-**Use GitHub Codespaces**
+The server will start on the default port (usually 5173).
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+talk-time-app/
+├── src/              # Source files
+├── server/           # Backend server code
+├── public/           # Static assets
+├── components.json   # shadcn/ui components config
+├── tsconfig.json    # TypeScript configuration
+└── vite.config.ts   # Vite configuration
+```
 
-This project is built with:
+## Available Scripts
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run build:dev` - Build for development
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
 
-## How can I deploy this project?
+## Contributing
 
-Simply open [Lovable](https://lovable.dev/projects/2c927ffe-7778-47df-9a5b-2bf1e10ab517) and click on Share -> Publish.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Contact
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Project Link: [https://github.com/yourusername/talk-time-app](https://github.com/yourusername/talk-time-app)

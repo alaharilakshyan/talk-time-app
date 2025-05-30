@@ -63,9 +63,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 Home
               </Link>
             </Button>
+          </div>
+
+          {/* Chat Button - Separated from navbar */}
+          <div className="flex-1 flex justify-end mr-4">
             <Button
-              variant={isActive('/chat') ? 'secondary' : 'ghost'}
+              variant={isActive('/chat') ? 'secondary' : 'default'}
               size="sm"
+              className="bg-gradient-to-r from-orange-400 to-rose-400 text-white hover:from-orange-500 hover:to-rose-500 shadow-sm"
               asChild
             >
               <Link to="/chat">

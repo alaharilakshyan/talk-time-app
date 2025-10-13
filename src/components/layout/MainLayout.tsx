@@ -37,22 +37,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-rose-50 dark:from-gray-900 dark:to-gray-800">
       {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 sm:h-16 items-center px-4">
+      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 mr-2 sm:mr-6">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-sm sm:text-base">TT</span>
+          <Link to="/" className="flex items-center space-x-2 mr-6">
+            <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-rose-400 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">TT</span>
             </div>
-            <span className="hidden sm:inline-block font-bold text-lg bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <span className="hidden font-bold sm:inline-block bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">
               TalkTime
             </span>
           </Link>
 
-          {/* Main Navigation - Hidden on mobile */}
-          <div className="hidden md:flex items-center space-x-2 mr-4">
+          {/* Main Navigation */}
+          <div className="flex items-center space-x-2 mr-4">
             <Button
               variant={isActive('/') ? 'secondary' : 'ghost'}
               size="sm"
@@ -65,34 +65,32 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </Button>
           </div>
 
-          {/* Chat Button */}
-          <div className="flex-1 flex justify-end mr-2 sm:mr-4">
+          {/* Chat Button - Separated from navbar */}
+          <div className="flex-1 flex justify-end mr-4">
             <Button
               variant={isActive('/chat') ? 'secondary' : 'default'}
               size="sm"
-              className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 shadow-lg"
+              className="bg-gradient-to-r from-orange-400 to-rose-400 text-white hover:from-orange-500 hover:to-rose-500 shadow-sm"
               asChild
             >
               <Link to="/chat">
-                <MessageCircle className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Chat</span>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Chat
               </Link>
             </Button>
           </div>
 
           {/* Right Side Controls */}
-          <div className="flex items-center space-x-1 sm:space-x-2">
+          <div className="flex items-center ml-auto space-x-2">
             <ThemeToggle />
             
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full">
-                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-primary/20">
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
                       <AvatarImage src={user.avatar} alt={user.username} />
-                      <AvatarFallback className="bg-gradient-to-r from-primary to-secondary text-white">
-                        {user.username.charAt(0).toUpperCase()}
-                      </AvatarFallback>
+                      <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -106,12 +104,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="md:hidden">
-                    <Link to="/">
-                      <Home className="mr-2 h-4 w-4" />
-                      <span>Home</span>
-                    </Link>
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/settings">
                       <Settings className="mr-2 h-4 w-4" />
@@ -130,7 +122,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto p-2 sm:p-4">
+      <main className="container mx-auto p-4">
         {children}
       </main>
     </div>

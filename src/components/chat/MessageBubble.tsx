@@ -1,57 +1,77 @@
+
 import React from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 
 interface Message {
-  _id: string;
-  senderId: {
-    _id: string;
-    username: string;
-    avatar: string;
-  };
+  id: string;
+  senderId: string;
+  senderName: string;
   text: string;
-  createdAt: string;
+  timestamp: Date;
+  isOwn: boolean;
 }
 
 interface MessageBubbleProps {
   message: Message;
-  isCurrentUser: boolean;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isCurrentUser }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+  const formatTime = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(date);
+  };
+
   return (
     <div className={cn(
-      "flex items-end gap-2 sm:gap-3 animate-fade-in",
-      isCurrentUser ? "flex-row-reverse" : "flex-row"
+      "flex",
+      message.isOwn ? "justify-end" : "justify-start"
     )}>
-      <Avatar className="h-6 w-6 sm:h-8 sm:w-8 ring-2 ring-primary/20 shrink-0">
-        <AvatarImage src={message.senderId.avatar} />
-        <AvatarFallback className="bg-gradient-to-r from-primary to-secondary text-white text-xs">
-          {message.senderId.username.charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      
       <div className={cn(
-        "flex flex-col max-w-[75%] sm:max-w-[70%]",
-        isCurrentUser ? "items-end" : "items-start"
+        "flex items-end space-x-2 max-w-xs md:max-w-md",
+        message.isOwn ? "flex-row-reverse space-x-reverse" : "flex-row"
       )}>
-        <span className="text-xs text-muted-foreground mb-1 px-2">
-          {message.senderId.username}
-        </span>
-        
-        <div className={cn(
-          "rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-lg backdrop-blur-sm transition-all active:scale-95 sm:hover:scale-[1.02]",
-          isCurrentUser 
-            ? "bg-gradient-to-r from-primary to-secondary text-white rounded-br-sm" 
-            : "bg-card/80 border border-primary/20 rounded-bl-sm"
-        )}>
-          <p className="text-sm break-words leading-relaxed">{message.text}</p>
+        {/* Avatar */}
+        <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-rose-400 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white font-semibold text-xs">
+            {message.senderName.charAt(0).toUpperCase()}
+          </span>
         </div>
-        
-        <span className="text-xs text-muted-foreground mt-1 px-2">
-          {format(new Date(message.createdAt), 'HH:mm')}
-        </span>
+
+        {/* Message Card */}
+        <Card className={cn(
+          "p-3 max-w-full",
+          message.isOwn 
+            ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-none" 
+            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+        )}>
+          <div className="space-y-1">
+            {!message.isOwn && (
+              <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                {message.senderName}
+              </p>
+            )}
+            <p className={cn(
+              "text-sm leading-relaxed break-words",
+              message.isOwn 
+                ? "text-white" 
+                : "text-gray-900 dark:text-gray-100"
+            )}>
+              {message.text}
+            </p>
+            <p className={cn(
+              "text-xs",
+              message.isOwn 
+                ? "text-orange-100" 
+                : "text-gray-500 dark:text-gray-400"
+            )}>
+              {formatTime(message.timestamp)}
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );

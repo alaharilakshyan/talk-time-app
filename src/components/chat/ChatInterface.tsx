@@ -132,7 +132,7 @@ export const ChatInterface = () => {
       addMessage(message);
       
       // Show notification for messages from non-selected users
-      if (message.senderId._id !== selectedUserId) {
+      if (message.senderId.id !== selectedUserId) {
         setLatestMessage(message);
       }
     });
@@ -144,7 +144,7 @@ export const ChatInterface = () => {
 
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
-    if (latestMessage?.senderId._id === userId) {
+    if (latestMessage?.senderId.id === userId) {
       setLatestMessage(null);
     }
   };
@@ -191,14 +191,9 @@ export const ChatInterface = () => {
   if (!user) return null;
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] flex gap-2 sm:gap-6 max-w-7xl mx-auto p-2 sm:p-6">
-      {/* User List - Full screen on mobile when no user selected */}
-      <div className={`
-        ${selectedUser ? 'hidden md:flex' : 'flex'} 
-        w-full md:w-80 
-        bg-card/50 backdrop-blur-xl border border-primary/20 
-        rounded-xl sm:rounded-2xl overflow-hidden flex-col shadow-2xl
-      `}>
+    <div className="h-[calc(100vh-4rem)] flex gap-6 max-w-7xl mx-auto p-6">
+      {/* User List */}
+      <div className="w-80 bg-card/50 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         <UserList
           users={users}
           selectedUserId={selectedUserId}
@@ -209,23 +204,15 @@ export const ChatInterface = () => {
           isRefreshing={isRefreshing}
         />
         
-        <div className="p-3 sm:p-4 border-t border-primary/10">
-          <Badge 
-            variant={isConnected ? "default" : "destructive"} 
-            className="w-full justify-center backdrop-blur-sm text-xs sm:text-sm"
-          >
+        <div className="p-4 border-t border-white/10">
+          <Badge variant={isConnected ? "default" : "destructive"} className="w-full justify-center backdrop-blur-sm">
             {isConnected ? "Connected" : "Disconnected"}
           </Badge>
         </div>
       </div>
 
-      {/* Chat Area - Full screen on mobile when user selected */}
-      <div className={`
-        ${selectedUser ? 'flex' : 'hidden md:flex'} 
-        flex-1 
-        bg-card/50 backdrop-blur-xl border border-primary/20 
-        rounded-xl sm:rounded-2xl overflow-hidden flex-col shadow-2xl
-      `}>
+      {/* Chat Area */}
+      <div className="flex-1 bg-card/50 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         {selectedUser ? (
           <>
             <ChatHeader
@@ -234,7 +221,6 @@ export const ChatInterface = () => {
               isConnected={isConnected}
               onRefresh={handleRefresh}
               isRefreshing={isRefreshing}
-              onBack={() => setSelectedUserId(null)}
             />
             <ChatMessages
               messages={conversationMessages}

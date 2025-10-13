@@ -1,18 +1,19 @@
+
 import React from 'react';
-import { MessageCircle } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 export const EmptyChat = () => {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 sm:p-8">
-      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center mb-4 sm:mb-6 animate-pulse">
-        <MessageCircle className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
-      </div>
-      <h3 className="text-xl sm:text-2xl font-semibold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent text-center">
-        Welcome to TalkTime
-      </h3>
-      <p className="text-center max-w-md text-sm sm:text-base px-4">
-        Select a conversation from the list to start chatting
-      </p>
+    <div className="flex items-center justify-center h-full">
+      <Card className="p-8 text-center border-orange-200 dark:border-orange-800">
+        <div className="text-gray-500 dark:text-gray-400">
+          <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            💬
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
+          <p className="text-sm">Select a user from the floating sidebar to begin chatting</p>
+        </div>
+      </Card>
     </div>
   );
 };

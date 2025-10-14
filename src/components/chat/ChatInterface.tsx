@@ -1,251 +1,247 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useMessageCache } from '@/hooks/useMessageCache';
-import { useRefresher } from '@/hooks/useRefresher';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { UserList } from './UserList';
-import { MessageNotification } from './MessageNotification';
 import { EmptyChat } from './EmptyChat';
 import { Badge } from '@/components/ui/badge';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Message {
-  _id: string;
-  senderId: {
-    _id: string;
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  file_url: string | null;
+  file_name: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  sender: {
     username: string;
-    avatar: string;
+    avatar_url: string | null;
   };
-  receiverId: {
-    _id: string;
-    username: string;
-    avatar: string;
-  };
-  text: string;
-  createdAt: string;
 }
 
-interface User {
-  _id: string;
+interface Profile {
+  id: string;
   username: string;
-  avatar: string;
-  email?: string;
-  isOnline: boolean;
-  lastSeen: string | null;
+  user_tag: string;
+  avatar_url: string | null;
+  isOnline?: boolean;
 }
 
 export const ChatInterface = () => {
-  const { user, token } = useAuth();
-  const { socket, isConnected, onlineUsers } = useSocket();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { refresh, isRefreshing } = useRefresher();
-  const {
-    getCachedMessages,
-    setCachedMessages,
-    addMessage,
-    isLoading: isCacheLoading,
-    setLoading: setCacheLoading,
-    clearCache
-  } = useMessageCache();
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [friends, setFriends] = useState<Profile[]>([]);
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [latestMessage, setLatestMessage] = useState<Message | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showUserList, setShowUserList] = useState(true);
 
-  const selectedUser = users.find(u => u._id === selectedUserId);
-  const conversationMessages = selectedUserId && user 
-    ? getCachedMessages(user.id, selectedUserId) 
-    : [];
+  const selectedFriend = friends.find(f => f.id === selectedFriendId);
 
-  // Fetch users
-  const fetchUsers = async () => {
-    if (!token) return;
-    
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error('Failed to fetch users');
-    const data = await response.json();
-    setUsers(data);
-  };
+  // Fetch friends
+  const fetchFriends = async () => {
+    if (!user) return;
 
-  // Fetch messages for selected user
-  const fetchMessages = async (userId: string) => {
-    if (!token || !user) return;
-    
-    setCacheLoading(user.id, userId, true);
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/messages/${userId}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error('Failed to fetch messages');
-      const data = await response.json();
-      setCachedMessages(user.id, userId, data.messages);
-    } finally {
-      setCacheLoading(user.id, userId, false);
+    const { data, error } = await supabase
+      .from('friends')
+      .select(`
+        friend_id,
+        profiles:friend_id (
+          id,
+          username,
+          user_tag,
+          avatar_url
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('status', 'accepted');
+
+    if (error) {
+      console.error('Error fetching friends:', error);
+      return;
     }
+
+    const friendProfiles = data?.map((f: any) => f.profiles).filter(Boolean) || [];
+    setFriends(friendProfiles);
   };
 
-  // Initial data load
-  useEffect(() => {
-    if (token) {
-      fetchUsers().catch(error => {
-        console.error('Error fetching users:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load users. Please try again later.",
-          variant: "destructive",
-        });
+  // Fetch messages
+  const fetchMessages = async (friendId: string) => {
+    if (!user) return;
+
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        sender:profiles!sender_id (username, avatar_url)
+      `)
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
       });
+    } else {
+      setMessages(data || []);
     }
-  }, [token, toast]);
+    setIsLoading(false);
+  };
 
-  // Load messages when user is selected
   useEffect(() => {
-    if (selectedUserId && user) {
-      const cached = getCachedMessages(user.id, selectedUserId);
-      if (cached.length === 0) {
-        fetchMessages(selectedUserId).catch(error => {
-          console.error('Error fetching messages:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load messages. Please try again later.",
-            variant: "destructive",
-          });
-        });
-      }
+    if (user) {
+      fetchFriends();
     }
-  }, [selectedUserId, user, getCachedMessages, toast]);
+  }, [user]);
 
-  // Handle incoming messages
   useEffect(() => {
-    if (!socket) return;
-
-    socket.on('receive_message', (message: Message) => {
-      console.log('Received message:', message);
-      addMessage(message);
+    if (selectedFriendId) {
+      fetchMessages(selectedFriendId);
       
-      // Show notification for messages from non-selected users
-      if (message.senderId.id !== selectedUserId) {
-        setLatestMessage(message);
-      }
-    });
+      // Subscribe to new messages
+      const channel = supabase
+        .channel('messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${user?.id}`,
+          },
+          (payload: any) => {
+            if (payload.new.sender_id === selectedFriendId || payload.new.receiver_id === selectedFriendId) {
+              setMessages(prev => [...prev, payload.new]);
+            }
+          }
+        )
+        .subscribe();
 
-    return () => {
-      socket.off('receive_message');
-    };
-  }, [socket, selectedUserId, addMessage]);
-
-  const handleUserSelect = (userId: string) => {
-    setSelectedUserId(userId);
-    if (latestMessage?.senderId.id === userId) {
-      setLatestMessage(null);
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
+  }, [selectedFriendId, user]);
+
+  const handleFriendSelect = (friendId: string) => {
+    setSelectedFriendId(friendId);
+    setShowUserList(false);
   };
 
   const handleSendMessage = async () => {
-    if (!socket || !selectedUserId || !newMessage.trim() || isSending) return;
+    if (!user || !selectedFriendId || !newMessage.trim() || isSending) return;
 
     setIsSending(true);
     
-    socket.emit('send_message', {
-      receiverId: selectedUserId,
-      text: newMessage.trim()
-    }, (response: { success: boolean; message?: Message; error?: string }) => {
-      setIsSending(false);
-      
-      if (response.success && response.message) {
-        console.log('Message sent successfully:', response.message);
-        addMessage(response.message);
-        setNewMessage('');
-      } else {
-        console.error('Failed to send message:', response.error);
-        toast({
-          title: "Error",
-          description: response.error || "Failed to send message. Please try again.",
-          variant: "destructive",
-        });
-      }
-    });
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: user.id,
+        receiver_id: selectedFriendId,
+        content: newMessage.trim(),
+      })
+      .select(`
+        *,
+        sender:profiles!sender_id (username, avatar_url)
+      `)
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
+    } else {
+      setMessages(prev => [...prev, data]);
+      setNewMessage('');
+    }
+
+    setIsSending(false);
   };
 
-  const handleRefresh = () => {
-    refresh(async () => {
-      await fetchUsers();
-      if (selectedUserId) {
-        await fetchMessages(selectedUserId);
-      }
-    });
-  };
-
-  const handleRefreshUsers = () => {
-    refresh(fetchUsers, { showToast: false });
+  const handleBackToList = () => {
+    setShowUserList(true);
+    setSelectedFriendId(null);
   };
 
   if (!user) return null;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex gap-6 max-w-7xl mx-auto p-6">
-      {/* User List */}
-      <div className="w-80 bg-card/50 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+    <div className="h-[calc(100vh-4rem)] flex gap-4 md:gap-6 max-w-7xl mx-auto p-2 md:p-6">
+      {/* User List - Mobile: Full screen when visible, Desktop: Always visible */}
+      <div className={`${showUserList ? 'flex' : 'hidden'} md:flex w-full md:w-80 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex-col shadow-xl`}>
         <UserList
-          users={users}
-          selectedUserId={selectedUserId}
-          onUserSelect={handleUserSelect}
-          onlineUsers={onlineUsers}
+          users={friends}
+          selectedUserId={selectedFriendId}
+          onUserSelect={handleFriendSelect}
+          onlineUsers={new Set()}
           currentUserId={user.id}
-          onRefresh={handleRefreshUsers}
-          isRefreshing={isRefreshing}
+          onRefresh={fetchFriends}
+          isRefreshing={false}
         />
         
-        <div className="p-4 border-t border-white/10">
-          <Badge variant={isConnected ? "default" : "destructive"} className="w-full justify-center backdrop-blur-sm">
-            {isConnected ? "Connected" : "Disconnected"}
+        <div className="p-4 border-t border-border/50">
+          <Badge variant="default" className="w-full justify-center">
+            Connected
           </Badge>
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 bg-card/50 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-        {selectedUser ? (
+      {/* Chat Area - Mobile: Full screen when friend selected, Desktop: Always visible */}
+      <div className={`${!showUserList ? 'flex' : 'hidden'} md:flex flex-1 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex-col shadow-xl`}>
+        {selectedFriend ? (
           <>
+            {/* Mobile back button */}
+            <div className="md:hidden p-2 border-b border-border/50">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToList}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+            </div>
+            
             <ChatHeader
-              selectedUser={selectedUser}
-              isOnline={onlineUsers.has(selectedUser._id)}
-              isConnected={isConnected}
-              onRefresh={handleRefresh}
-              isRefreshing={isRefreshing}
+              selectedUser={selectedFriend}
+              isOnline={false}
+              isConnected={true}
+              onRefresh={() => fetchMessages(selectedFriendId!)}
+              isRefreshing={isLoading}
             />
             <ChatMessages
-              messages={conversationMessages}
+              messages={messages}
               currentUserId={user.id}
-              isLoading={isCacheLoading(user.id, selectedUserId!)}
+              isLoading={isLoading}
             />
             <ChatInput
               value={newMessage}
               onChange={setNewMessage}
               onSend={handleSendMessage}
-              isDisabled={!isConnected || isSending}
+              isDisabled={isSending}
             />
           </>
         ) : (
           <EmptyChat />
         )}
       </div>
-
-      {/* Message Notification */}
-      {latestMessage && (
-        <MessageNotification
-          message={latestMessage}
-          onClose={() => setLatestMessage(null)}
-        />
-      )}
     </div>
   );
 };

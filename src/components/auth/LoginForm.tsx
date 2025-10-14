@@ -35,10 +35,10 @@ export const LoginForm = () => {
         description: "You've been logged in successfully.",
       });
       navigate('/chat');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Login failed",
-        description: "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {

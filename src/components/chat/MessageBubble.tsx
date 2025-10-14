@@ -1,78 +1,80 @@
-
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Message {
   id: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  timestamp: Date;
-  isOwn: boolean;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  file_url: string | null;
+  file_name: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  isSent?: boolean;
+  sender?: {
+    username: string;
+    avatar_url: string | null;
+  };
 }
 
 interface MessageBubbleProps {
   message: Message;
+  isSent: boolean;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  };
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent }) => {
+  const senderName = isSent ? 'You' : (message.sender?.username || 'Unknown');
+  const avatarUrl = message.sender?.avatar_url;
+
+  if (message.is_deleted) {
+    return (
+      <div className={`flex gap-2 md:gap-3 mb-3 md:mb-4 ${isSent ? 'justify-end' : 'justify-start'}`}>
+        <div className="italic text-muted-foreground text-sm">Message deleted</div>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn(
-      "flex",
-      message.isOwn ? "justify-end" : "justify-start"
-    )}>
-      <div className={cn(
-        "flex items-end space-x-2 max-w-xs md:max-w-md",
-        message.isOwn ? "flex-row-reverse space-x-reverse" : "flex-row"
-      )}>
-        {/* Avatar */}
-        <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-rose-400 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-semibold text-xs">
-            {message.senderName.charAt(0).toUpperCase()}
+    <div className={`flex gap-2 md:gap-3 mb-3 md:mb-4 animate-fade-in ${isSent ? 'justify-end' : 'justify-start'}`}>
+      {!isSent && (
+        <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
+          <AvatarImage src={avatarUrl || undefined} alt={senderName} />
+          <AvatarFallback className="text-xs">{senderName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      )}
+      
+      <div className={`flex flex-col max-w-[75%] md:max-w-[70%] ${isSent ? 'items-end' : 'items-start'}`}>
+        {!isSent && (
+          <span className="text-xs md:text-sm font-medium mb-1 px-1">
+            {senderName}
+          </span>
+        )}
+        
+        <div className={`rounded-2xl px-3 py-2 md:px-4 md:py-2.5 shadow-sm ${
+          isSent 
+            ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+            : 'bg-card border border-border/50 rounded-tl-sm'
+        }`}>
+          <p className="text-sm md:text-base break-words whitespace-pre-wrap leading-relaxed">
+            {message.content}
+          </p>
+          <span className={`text-xs mt-1.5 block ${
+            isSent ? 'text-primary-foreground/70' : 'text-muted-foreground'
+          }`}>
+            {new Date(message.created_at).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
           </span>
         </div>
-
-        {/* Message Card */}
-        <Card className={cn(
-          "p-3 max-w-full",
-          message.isOwn 
-            ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-none" 
-            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-        )}>
-          <div className="space-y-1">
-            {!message.isOwn && (
-              <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
-                {message.senderName}
-              </p>
-            )}
-            <p className={cn(
-              "text-sm leading-relaxed break-words",
-              message.isOwn 
-                ? "text-white" 
-                : "text-gray-900 dark:text-gray-100"
-            )}>
-              {message.text}
-            </p>
-            <p className={cn(
-              "text-xs",
-              message.isOwn 
-                ? "text-orange-100" 
-                : "text-gray-500 dark:text-gray-400"
-            )}>
-              {formatTime(message.timestamp)}
-            </p>
-          </div>
-        </Card>
       </div>
+      
+      {isSent && (
+        <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
+          <AvatarImage src={avatarUrl || undefined} alt={senderName} />
+          <AvatarFallback className="text-xs">{senderName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      )}
     </div>
   );
 };

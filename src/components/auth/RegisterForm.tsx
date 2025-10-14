@@ -53,13 +53,13 @@ export const RegisterForm = () => {
       await register(username, email, password);
       toast({
         title: "Account created!",
-        description: "Welcome to ChatApp. You're now logged in.",
+        description: "Welcome to TalkTime. You're now logged in.",
       });
       navigate('/chat');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Registration failed",
-        description: "Please try again with different credentials.",
+        description: error.message || "Please try again with different credentials.",
         variant: "destructive",
       });
     } finally {

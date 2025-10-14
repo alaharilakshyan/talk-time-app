@@ -1,26 +1,39 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User, Session } from '@supabase/supabase-js';
 
-// Type definitions for TypeScript
-interface User {
+interface Profile {
   id: string;
   username: string;
+  user_tag: string;
+  avatar_url: string | null;
+  bio: string | null;
+}
+
+interface AuthUser {
+  id: string;
   email: string;
-  avatar?: string;
+  username: string;
+  user_tag: string;
+  avatar_url: string | null;
+  avatar: string | null;
+  bio: string | null;
 }
 
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
+  user: AuthUser | null;
+  session: Session | null;
+  profile: Profile | null;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
-// Create context with undefined initial value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Custom hook for accessing auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -29,130 +42,202 @@ export const useAuth = () => {
   return context;
 };
 
-// Main authentication provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // State management for user, token, and loading status
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize authentication state on component mount
-  useEffect(() => {
-    const initializeAuth = async () => {
-      // Check localStorage for existing credentials
-      const storedToken = localStorage.getItem('chat-token');
-      const storedUser = localStorage.getItem('chat-user');
-      
-      if (storedToken && storedUser) {
-        try {
-          // Verify token validity with backend
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify`, {
-            headers: {
-              Authorization: `Bearer ${storedToken}`
-            }
-          });
-          
-          if (response.ok) {
-            // Valid token: set state with stored values
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-          } else {
-            // Invalid token: clear storage
-            logout();
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          logout();
-        }
-      }
-      // Finish initial loading
-      setLoading(false);
-    };
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-    initializeAuth();
-  }, []); // Empty dependency array = runs only once on mount
-
-  // Handle successful authentication responses
-  const handleAuthResponse = async (response: Response) => {
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'Authentication failed');
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return null;
     }
+    return data;
+  };
 
-    // Fetch complete user details after successful auth
-    const userResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${data.token}`
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchProfile(session.user.id).then((profileData) => {
+          if (profileData) {
+            setProfile(profileData);
+              setUser({
+                id: session.user.id,
+                email: session.user.email!,
+                username: profileData.username,
+                user_tag: profileData.user_tag,
+                avatar_url: profileData.avatar_url,
+                avatar: profileData.avatar_url,
+                bio: profileData.bio,
+              });
+          }
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
     });
 
-    if (!userResponse.ok) throw new Error('Failed to fetch user details');
-    
-    // Update state and storage with new auth data
-    const userData = await userResponse.json();
-    localStorage.setItem('chat-token', data.token);
-    localStorage.setItem('chat-user', JSON.stringify(userData));
-    setToken(data.token);
-    setUser(userData);
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      if (session?.user) {
+        setTimeout(() => {
+          fetchProfile(session.user.id).then((profileData) => {
+            if (profileData) {
+              setProfile(profileData);
+              setUser({
+                id: session.user.id,
+                email: session.user.email!,
+                username: profileData.username,
+                user_tag: profileData.user_tag,
+                avatar_url: profileData.avatar_url,
+                avatar: profileData.avatar_url,
+                bio: profileData.bio,
+              });
+            }
+          });
+        }, 0);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+    });
 
-  // Login with email and password
+    return () => subscription.unsubscribe();
+  }, []);
+
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      await handleAuthResponse(response);
-    } catch (error) {
+      if (error) throw error;
+
+      if (data.user) {
+        const profileData = await fetchProfile(data.user.id);
+        if (profileData) {
+          setProfile(profileData);
+          setUser({
+            id: data.user.id,
+            email: data.user.email!,
+            username: profileData.username,
+            user_tag: profileData.user_tag,
+            avatar_url: profileData.avatar_url,
+            avatar: profileData.avatar_url,
+            bio: profileData.bio,
+          });
+        }
+      }
+    } catch (error: any) {
       console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setLoading(false); // Always reset loading state
-    }
-  };
-
-  // Register new user
-  const register = async (username: string, email: string, password: string) => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      await handleAuthResponse(response);
-    } catch (error) {
-      console.error('Registration failed:', error);
-      throw error;
+      throw new Error(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
-  // Clear authentication state
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    // Remove stored credentials
-    localStorage.removeItem('chat-token');
-    localStorage.removeItem('chat-user');
+  const register = async (username: string, email: string, password: string) => {
+    setLoading(true);
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+          },
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        const profileData = await fetchProfile(data.user.id);
+        if (profileData) {
+          setProfile(profileData);
+          setUser({
+            id: data.user.id,
+            email: data.user.email!,
+            username: profileData.username,
+            user_tag: profileData.user_tag,
+            avatar_url: profileData.avatar_url,
+            avatar: profileData.avatar_url,
+            bio: profileData.bio,
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      throw new Error(error.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Provide context value to children
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+  };
+
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!user) throw new Error('No user logged in');
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    const updatedProfile = { ...profile, ...updates } as Profile;
+    setProfile(updatedProfile);
+    setUser({
+      ...user,
+      ...updates,
+    });
+  };
+
+  const deleteAccount = async () => {
+    if (!user) throw new Error('No user logged in');
+
+    // Delete user profile and related data
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', user.id);
+    
+    if (error) throw error;
+
+    await logout();
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
-      token,
+      session,
+      profile,
       login,
       register,
       logout,
       loading,
+      updateProfile,
+      deleteAccount,
     }}>
       {children}
     </AuthContext.Provider>

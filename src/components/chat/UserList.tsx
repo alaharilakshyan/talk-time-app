@@ -1,17 +1,15 @@
-
 import React from 'react';
-import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, User as UserIcon } from 'lucide-react';
+import { RefreshCw, Users } from 'lucide-react';
 
 interface User {
-  _id: string;
+  id: string;
   username: string;
-  avatar: string;
-  lastSeen: string | null;
+  user_tag: string;
+  avatar_url: string | null;
+  isOnline?: boolean;
 }
 
 interface UserListProps {
@@ -33,111 +31,68 @@ export const UserList: React.FC<UserListProps> = ({
   onRefresh,
   isRefreshing = false
 }) => {
-  const formatLastSeen = (lastSeen: string | null) => {
-    if (!lastSeen) return 'Never';
-    const date = new Date(lastSeen);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000);
-      return `${minutes}m ago`;
-    }
-    if (diff < 86400000) {
-      const hours = Math.floor(diff / 3600000);
-      return `${hours}h ago`;
-    }
-    const days = Math.floor(diff / 86400000);
-    return `${days}d ago`;
-  };
-
   return (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-white/10 flex items-center justify-between backdrop-blur-sm">
-        <h2 className="font-semibold text-lg">Contacts</h2>
+      <div className="p-3 md:p-6 border-b border-border/50 flex items-center justify-between backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold text-base md:text-lg">Friends</h2>
+        </div>
         {onRefresh && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="hover:bg-white/10 backdrop-blur-sm"
           >
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
         )}
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="p-3 space-y-2">
-          {users.map((user) => {
-            const isOnline = onlineUsers.has(user._id);
-            const isCurrentUser = user._id === currentUserId;
-            
-            return (
-              <button
-                key={user._id}
-                onClick={() => !isCurrentUser && onUserSelect(user._id)}
-                disabled={isCurrentUser}
-                className={cn(
-                  "w-full flex items-center gap-3 p-4 rounded-xl transition-all duration-300 backdrop-blur-sm border",
-                  !isCurrentUser && "hover:bg-white/10 hover:border-white/30 cursor-pointer transform hover:scale-[1.02]",
-                  selectedUserId === user._id && "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/30",
-                  isCurrentUser && "opacity-60 cursor-not-allowed bg-white/5 border-white/10",
-                  "relative overflow-hidden group"
-                )}
-              >
-                <div className="relative">
-                  <Avatar className="h-12 w-12 ring-2 ring-white/20">
-                    <AvatarImage src={user.avatar} alt={user.username} />
-                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
-                      {user.username[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {isOnline && !isCurrentUser && (
-                    <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-500 border-2 border-background shadow-lg" />
-                  )}
-                  {isCurrentUser && (
-                    <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-background shadow-lg flex items-center justify-center">
-                      <UserIcon className="w-2 h-2 text-white" />
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex-1 text-left min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium truncate">{user.username}</span>
-                    {isCurrentUser && (
-                      <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
-                        me
-                      </Badge>
-                    )}
-                  </div>
-                  {!isOnline && !isCurrentUser && (
-                    <p className="text-xs text-muted-foreground/70">
-                      Last seen: {formatLastSeen(user.lastSeen)}
-                    </p>
-                  )}
-                  {isOnline && !isCurrentUser && (
-                    <p className="text-xs text-green-400 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                      Online
-                    </p>
-                  )}
-                  {isCurrentUser && (
-                    <p className="text-xs text-blue-400">
-                      Your account
-                    </p>
-                  )}
-                </div>
+        <ul className="divide-y divide-border/50">
+          {users
+            .filter(u => u.id !== currentUserId)
+            .map((user) => {
+              const isUserOnline = onlineUsers.has(user.id);
+              const isSelected = selectedUserId === user.id;
 
-                {/* Hover effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <li key={user.id}>
+                  <button
+                    onClick={() => onUserSelect(user.id)}
+                    className={`w-full flex items-center gap-3 p-3 md:p-4 hover:bg-muted/50 transition-all duration-200 border-l-2 ${
+                      isSelected 
+                        ? 'border-primary bg-muted/50' 
+                        : 'border-transparent'
+                    }`}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="h-10 w-10 md:h-12 md:w-12 ring-2 ring-background">
+                        <AvatarImage src={user.avatar_url || undefined} alt={user.username} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+                          {user.username.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {isUserOnline && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 md:w-3.5 md:h-3.5 bg-green-500 border-2 border-background rounded-full" />
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="font-medium text-sm md:text-base truncate">
+                        {user.username}
+                      </p>
+                      <p className="text-xs md:text-sm text-muted-foreground truncate">
+                        #{user.user_tag}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+        </ul>
       </ScrollArea>
     </div>
   );

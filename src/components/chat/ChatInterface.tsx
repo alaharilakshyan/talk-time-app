@@ -45,6 +45,8 @@ export const ChatInterface = () => {
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showUserList, setShowUserList] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
 
@@ -143,16 +145,52 @@ export const ChatInterface = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!user || !selectedFriendId || !newMessage.trim() || isSending) return;
+    if (!user || !selectedFriendId || (!newMessage.trim() && !selectedFile) || isSending) return;
 
     setIsSending(true);
-    
+    setUploading(true);
+
+    let fileUrl = null;
+    let fileName = null;
+    let fileSize = null;
+
+    if (selectedFile) {
+      const fileExt = selectedFile.name.split('.').pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-files')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) {
+        toast({
+          title: "Error",
+          description: "Failed to upload file",
+          variant: "destructive",
+        });
+        setIsSending(false);
+        setUploading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('chat-files')
+        .getPublicUrl(filePath);
+
+      fileUrl = urlData.publicUrl;
+      fileName = selectedFile.name;
+      fileSize = selectedFile.size;
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .insert({
         sender_id: user.id,
         receiver_id: selectedFriendId,
-        content: newMessage.trim(),
+        content: newMessage.trim() || 'Sent a file',
+        file_url: fileUrl,
+        file_name: fileName,
+        file_size: fileSize,
       })
       .select(`
         *,
@@ -169,9 +207,11 @@ export const ChatInterface = () => {
     } else {
       setMessages(prev => [...prev, data]);
       setNewMessage('');
+      setSelectedFile(null);
     }
 
     setIsSending(false);
+    setUploading(false);
   };
 
   const handleBackToList = () => {
@@ -235,7 +275,10 @@ export const ChatInterface = () => {
               value={newMessage}
               onChange={setNewMessage}
               onSend={handleSendMessage}
-              isDisabled={isSending}
+              isDisabled={isSending || uploading}
+              onFileSelect={setSelectedFile}
+              selectedFile={selectedFile}
+              onClearFile={() => setSelectedFile(null)}
             />
           </>
         ) : (

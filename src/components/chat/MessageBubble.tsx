@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { FileText, Download } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -25,6 +26,7 @@ interface MessageBubbleProps {
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent }) => {
   const senderName = isSent ? 'You' : (message.sender?.username || 'Unknown');
   const avatarUrl = message.sender?.avatar_url;
+  const isImage = message.file_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(message.file_url);
 
   if (message.is_deleted) {
     return (
@@ -55,9 +57,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
             ? 'bg-primary text-primary-foreground rounded-tr-sm' 
             : 'bg-card border border-border/50 rounded-tl-sm'
         }`}>
-          <p className="text-sm md:text-base break-words whitespace-pre-wrap leading-relaxed">
-            {message.content}
-          </p>
+          {message.file_url && (
+            <div className="mb-2">
+              {isImage ? (
+                <img
+                  src={message.file_url}
+                  alt={message.file_name || 'Image'}
+                  className="max-w-full rounded-lg max-h-64 object-cover"
+                />
+              ) : (
+                <a
+                  href={message.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-2 bg-background/10 rounded-lg hover:bg-background/20 transition-colors"
+                >
+                  <FileText className="h-5 w-5" />
+                  <span className="text-sm truncate">{message.file_name}</span>
+                  <Download className="h-4 w-4 ml-auto" />
+                </a>
+              )}
+            </div>
+          )}
+          {message.content && message.content !== 'Sent a file' && (
+            <p className="text-sm md:text-base break-words whitespace-pre-wrap leading-relaxed">
+              {message.content}
+            </p>
+          )}
           <span className={`text-xs mt-1.5 block ${
             isSent ? 'text-primary-foreground/70' : 'text-muted-foreground'
           }`}>

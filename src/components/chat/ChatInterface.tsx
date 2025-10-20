@@ -54,7 +54,8 @@ export const ChatInterface = () => {
   const fetchFriends = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    // Fetch friends where I'm the user OR where I'm the friend (bidirectional)
+    const { data: sentFriends, error: sentError } = await supabase
       .from('friends')
       .select(`
         friend_id,
@@ -68,13 +69,31 @@ export const ChatInterface = () => {
       .eq('user_id', user.id)
       .eq('status', 'accepted');
 
-    if (error) {
-      console.error('Error fetching friends:', error);
+    const { data: receivedFriends, error: receivedError } = await supabase
+      .from('friends')
+      .select(`
+        user_id,
+        profiles:user_id (
+          id,
+          username,
+          user_tag,
+          avatar_url
+        )
+      `)
+      .eq('friend_id', user.id)
+      .eq('status', 'accepted');
+
+    if (sentError || receivedError) {
+      console.error('Error fetching friends:', sentError || receivedError);
       return;
     }
 
-    const friendProfiles = data?.map((f: any) => f.profiles).filter(Boolean) || [];
-    setFriends(friendProfiles);
+    const allFriendProfiles = [
+      ...(sentFriends?.map((f: any) => f.profiles).filter(Boolean) || []),
+      ...(receivedFriends?.map((f: any) => f.profiles).filter(Boolean) || [])
+    ];
+
+    setFriends(allFriendProfiles);
   };
 
   // Fetch messages
@@ -107,6 +126,33 @@ export const ChatInterface = () => {
   useEffect(() => {
     if (user) {
       fetchFriends();
+
+      // Subscribe to friend updates
+      const channel = supabase
+        .channel('friends-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friends',
+            filter: `user_id=eq.${user.id},friend_id=eq.${user.id}`,
+          },
+          (payload: any) => {
+            if (payload.eventType === 'UPDATE' && payload.new.status === 'accepted') {
+              toast({
+                title: "New Friend! 🎉",
+                description: "Someone accepted your friend request!",
+              });
+            }
+            fetchFriends();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 

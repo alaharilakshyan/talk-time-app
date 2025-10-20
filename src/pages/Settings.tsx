@@ -54,11 +54,11 @@ const Settings = () => {
 
     setUploading(true);
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file, { upsert: true });
+      .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
       toast({
@@ -70,7 +70,7 @@ const Settings = () => {
       return;
     }
 
-    const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
     try {
       await updateProfile({ avatar_url: data.publicUrl });

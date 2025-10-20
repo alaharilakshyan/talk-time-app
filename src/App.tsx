@@ -12,7 +12,6 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Chat from "./pages/Chat";
-import Friends from "./pages/Friends";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -49,16 +48,6 @@ const App = () => {
                       <ProtectedRoute>
                         <MainLayout>
                           <Chat />
-                        </MainLayout>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/friends"
-                    element={
-                      <ProtectedRoute>
-                        <MainLayout>
-                          <Friends />
                         </MainLayout>
                       </ProtectedRoute>
                     }

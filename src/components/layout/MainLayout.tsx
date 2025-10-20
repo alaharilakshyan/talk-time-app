@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Home, Settings, LogOut, Users } from 'lucide-react';
+import { MessageCircle, Home, Settings, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,16 +71,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <Link to="/chat">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Chat
-              </Link>
-            </Button>
-            <Button
-              variant={isActive('/friends') ? 'secondary' : 'ghost'}
-              size="sm"
-              asChild
-            >
-              <Link to="/friends">
-                <Users className="h-4 w-4 mr-2" />
-                Friends
               </Link>
             </Button>
           </div>

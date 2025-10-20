@@ -8,8 +8,18 @@ import { ChatInput } from './ChatInput';
 import { UserList } from './UserList';
 import { EmptyChat } from './EmptyChat';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface Message {
   id: string;
@@ -47,6 +57,8 @@ export const ChatInterface = () => {
   const [showUserList, setShowUserList] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [addFriendDialog, setAddFriendDialog] = useState(false);
+  const [friendUserTag, setFriendUserTag] = useState('');
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
 
@@ -265,6 +277,86 @@ export const ChatInterface = () => {
     setSelectedFriendId(null);
   };
 
+  const handleAddFriend = async () => {
+    if (!user || !friendUserTag.trim()) return;
+
+    try {
+      // Find user by tag
+      const { data: friendProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('user_tag', friendUserTag.trim())
+        .single();
+
+      if (profileError || !friendProfile) {
+        toast({
+          title: "Error",
+          description: "User not found with that tag",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (friendProfile.id === user.id) {
+        toast({
+          title: "Error",
+          description: "You cannot add yourself as a friend",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if already friends
+      const { data: existingFriend } = await supabase
+        .from('friends')
+        .select('*')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${friendProfile.id}),and(user_id.eq.${friendProfile.id},friend_id.eq.${user.id})`)
+        .single();
+
+      if (existingFriend) {
+        toast({
+          title: "Info",
+          description: existingFriend.status === 'pending' ? "Friend request already sent" : "Already friends",
+        });
+        return;
+      }
+
+      // Send friend request
+      const { error: insertError } = await supabase
+        .from('friends')
+        .insert({
+          user_id: user.id,
+          friend_id: friendProfile.id,
+          status: 'accepted' // Auto-accept for simplicity
+        });
+
+      if (insertError) {
+        toast({
+          title: "Error",
+          description: "Failed to add friend",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success! 🎉",
+        description: `${friendProfile.username} added as friend`,
+      });
+
+      setAddFriendDialog(false);
+      setFriendUserTag('');
+      fetchFriends();
+    } catch (error) {
+      console.error('Add friend error:', error);
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -281,7 +373,38 @@ export const ChatInterface = () => {
           isRefreshing={false}
         />
         
-        <div className="p-4 border-t border-border/50">
+        <div className="p-4 border-t border-border/50 space-y-2">
+          <Dialog open={addFriendDialog} onOpenChange={setAddFriendDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add Friend
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Friend</DialogTitle>
+                <DialogDescription>
+                  Enter your friend's user tag (the 4-digit number) to add them.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div>
+                  <Label htmlFor="userTag">User Tag</Label>
+                  <Input
+                    id="userTag"
+                    placeholder="1234"
+                    value={friendUserTag}
+                    onChange={(e) => setFriendUserTag(e.target.value)}
+                    maxLength={4}
+                  />
+                </div>
+                <Button onClick={handleAddFriend} className="w-full">
+                  Add Friend
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Badge variant="default" className="w-full justify-center">
             Connected
           </Badge>

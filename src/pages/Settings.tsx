@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +17,7 @@ const Settings = () => {
   const [bio, setBio] = useState(user?.bio || '');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
 
   const handleSave = async () => {
     if (!user) return;
@@ -88,11 +88,53 @@ const Settings = () => {
     setUploading(false);
   };
 
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingBackground(true);
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${user.id}/background-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('chat-files')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      toast({
+        title: "Error",
+        description: "Failed to upload background",
+        variant: "destructive",
+      });
+      setUploadingBackground(false);
+      return;
+    }
+
+    const { data } = supabase.storage.from('chat-files').getPublicUrl(filePath);
+    
+    // Store background URL in localStorage
+    localStorage.setItem('chatBackground', data.publicUrl);
+    
+    toast({
+      title: "Success",
+      description: "Chat background updated successfully",
+    });
+    setUploadingBackground(false);
+  };
+
   if (!user) return null;
 
   return (
-    <MainLayout>
-      <div className="container max-w-2xl mx-auto p-6">
+    <div className="container max-w-2xl mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Settings</h1>
 
         <Card className="p-6 space-y-6">
@@ -170,8 +212,51 @@ const Settings = () => {
             </Button>
           </div>
         </Card>
+
+        <Card className="p-6 space-y-4 mt-6">
+          <h2 className="text-xl font-semibold">Chat Customization</h2>
+          
+          <div>
+            <Label htmlFor="background">Chat Background</Label>
+            <Input
+              id="background"
+              type="file"
+              accept="image/*"
+              onChange={handleBackgroundUpload}
+              className="hidden"
+            />
+            <Label htmlFor="background">
+              <Button variant="outline" disabled={uploadingBackground} asChild className="w-full mt-2">
+                <span className="cursor-pointer">
+                  {uploadingBackground ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  Upload Chat Background
+                </span>
+              </Button>
+            </Label>
+            <p className="text-xs text-muted-foreground mt-2">
+              Upload an image to customize your chat background
+            </p>
+          </div>
+
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => {
+              localStorage.removeItem('chatBackground');
+              toast({
+                title: "Success",
+                description: "Chat background reset to default",
+              });
+            }}
+          >
+            Reset to Default Background
+          </Button>
+        </Card>
       </div>
-    </MainLayout>
   );
 };
 

@@ -8,6 +8,7 @@ import { ChatInput } from './ChatInput';
 import { UserList } from './UserList';
 import { EmptyChat } from './EmptyChat';
 import { Badge } from '@/components/ui/badge';
+import { UserProfileDialog } from './UserProfileDialog';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ interface Profile {
   username: string;
   user_tag: string;
   avatar_url: string | null;
+  bio: string | null;
   isOnline?: boolean;
 }
 
@@ -59,6 +61,10 @@ export const ChatInterface = () => {
   const [uploading, setUploading] = useState(false);
   const [addFriendDialog, setAddFriendDialog] = useState(false);
   const [friendUserTag, setFriendUserTag] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [chatBackground, setChatBackground] = useState<string | null>(null);
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
 
@@ -75,7 +81,8 @@ export const ChatInterface = () => {
           id,
           username,
           user_tag,
-          avatar_url
+          avatar_url,
+          bio
         )
       `)
       .eq('user_id', user.id)
@@ -89,7 +96,8 @@ export const ChatInterface = () => {
           id,
           username,
           user_tag,
-          avatar_url
+          avatar_url,
+          bio
         )
       `)
       .eq('friend_id', user.id)
@@ -136,8 +144,52 @@ export const ChatInterface = () => {
   };
 
   useEffect(() => {
+    // Load chat background from localStorage
+    const savedBackground = localStorage.getItem('chatBackground');
+    if (savedBackground) {
+      setChatBackground(savedBackground);
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       fetchFriends();
+
+      // Subscribe to presence for online status
+      const presenceChannel = supabase.channel('online-users');
+      
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          const online = new Set(
+            Object.keys(state)
+              .flatMap(k => state[k])
+              .map((presence: any) => presence.user_id)
+              .filter(Boolean)
+          );
+          setOnlineUsers(online);
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          const userId = (newPresences[0] as any)?.user_id;
+          if (userId) {
+            setOnlineUsers(prev => new Set([...prev, userId]));
+          }
+        })
+        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+          const userId = (leftPresences[0] as any)?.user_id;
+          if (userId) {
+            setOnlineUsers(prev => {
+              const next = new Set(prev);
+              next.delete(userId);
+              return next;
+            });
+          }
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({ user_id: user.id, online_at: new Date().toISOString() });
+          }
+        });
 
       // Subscribe to friend updates
       const channel = supabase
@@ -163,6 +215,7 @@ export const ChatInterface = () => {
         .subscribe();
 
       return () => {
+        supabase.removeChannel(presenceChannel);
         supabase.removeChannel(channel);
       };
     }
@@ -367,7 +420,7 @@ export const ChatInterface = () => {
           users={friends}
           selectedUserId={selectedFriendId}
           onUserSelect={handleFriendSelect}
-          onlineUsers={new Set()}
+          onlineUsers={onlineUsers}
           currentUserId={user.id}
           onRefresh={fetchFriends}
           isRefreshing={false}
@@ -412,7 +465,15 @@ export const ChatInterface = () => {
       </div>
 
       {/* Chat Area - Mobile: Full screen when friend selected, Desktop: Always visible */}
-      <div className={`${!showUserList ? 'flex' : 'hidden'} md:flex flex-1 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex-col shadow-xl`}>
+      <div 
+        className={`${!showUserList ? 'flex' : 'hidden'} md:flex flex-1 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex-col shadow-xl relative`}
+        style={chatBackground ? {
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${chatBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        } : undefined}
+      >
         {selectedFriend ? (
           <>
             {/* Mobile back button */}
@@ -430,10 +491,12 @@ export const ChatInterface = () => {
             
             <ChatHeader
               selectedUser={selectedFriend}
-              isOnline={false}
+              isOnline={onlineUsers.has(selectedFriendId!)}
+              isTyping={typingUsers.has(selectedFriendId!)}
               isConnected={true}
               onRefresh={() => fetchMessages(selectedFriendId!)}
               isRefreshing={isLoading}
+              onUserClick={() => setProfileDialogOpen(true)}
             />
             <ChatMessages
               messages={messages}
@@ -454,6 +517,16 @@ export const ChatInterface = () => {
           <EmptyChat />
         )}
       </div>
+
+      {/* User Profile Dialog */}
+      {selectedFriendId && (
+        <UserProfileDialog
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+          userId={selectedFriendId}
+          currentUserId={user.id}
+        />
+      )}
     </div>
   );
 };

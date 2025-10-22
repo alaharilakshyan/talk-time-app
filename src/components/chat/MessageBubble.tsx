@@ -1,6 +1,7 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Message {
   id: string;
@@ -60,22 +61,75 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
           {message.file_url && (
             <div className="mb-2">
               {isImage ? (
-                <img
-                  src={message.file_url}
-                  alt={message.file_name || 'Image'}
-                  className="max-w-full rounded-lg max-h-64 object-cover"
-                />
+                <div className="space-y-2">
+                  <img
+                    src={message.file_url}
+                    alt={message.file_name || 'Image'}
+                    className="max-w-full rounded-lg max-h-64 object-cover"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = message.file_url!;
+                        link.download = message.file_name || 'image';
+                        link.click();
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => window.open(message.file_url!, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Open
+                    </Button>
+                  </div>
+                </div>
               ) : (
-                <a
-                  href={message.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-2 bg-background/10 rounded-lg hover:bg-background/20 transition-colors"
-                >
-                  <FileText className="h-5 w-5" />
-                  <span className="text-sm truncate">{message.file_name}</span>
-                  <Download className="h-4 w-4 ml-auto" />
-                </a>
+                <div className="space-y-2">
+                  <a
+                    href={message.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2 bg-background/10 rounded-lg hover:bg-background/20 transition-colors"
+                  >
+                    <FileText className="h-5 w-5" />
+                    <span className="text-sm truncate">{message.file_name}</span>
+                  </a>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = message.file_url!;
+                        link.download = message.file_name || 'file';
+                        link.click();
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => window.open(message.file_url!, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Open
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           )}

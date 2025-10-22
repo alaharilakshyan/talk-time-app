@@ -9,6 +9,7 @@ interface User {
   username: string;
   user_tag: string;
   avatar_url: string | null;
+  bio: string | null;
   isOnline?: boolean;
 }
 
@@ -85,7 +86,7 @@ export const UserList: React.FC<UserListProps> = ({
                         {user.username}
                       </p>
                       <p className="text-xs md:text-sm text-muted-foreground truncate">
-                        #{user.user_tag}
+                        {user.bio || 'Hey there! I am using this chat app.'}
                       </p>
                     </div>
                   </button>

@@ -106,7 +106,7 @@ const Settings = () => {
     const filePath = `${user.id}/background-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('chat-files')
+      .from('avatars')
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
@@ -119,16 +119,22 @@ const Settings = () => {
       return;
     }
 
-    const { data } = supabase.storage.from('chat-files').getPublicUrl(filePath);
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
     
     // Store background URL in localStorage
     localStorage.setItem('chatBackground', data.publicUrl);
     
+    // Trigger a storage event to update other tabs/components
+    window.dispatchEvent(new Event('storage'));
+    
     toast({
       title: "Success",
-      description: "Chat background updated successfully",
+      description: "Chat background updated. Refresh to see changes.",
     });
     setUploadingBackground(false);
+    
+    // Reload page to apply background
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   if (!user) return null;

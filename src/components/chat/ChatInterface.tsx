@@ -5,11 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
-import { UserList } from './UserList';
+import { FloatingUserSidebar } from './FloatingUserSidebar';
 import { EmptyChat } from './EmptyChat';
 import { Badge } from '@/components/ui/badge';
 import { UserProfileDialog } from './UserProfileDialog';
-import { ArrowLeft, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -56,7 +56,6 @@ export const ChatInterface = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showUserList, setShowUserList] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [addFriendDialog, setAddFriendDialog] = useState(false);
@@ -145,10 +144,16 @@ export const ChatInterface = () => {
 
   useEffect(() => {
     // Load chat background from localStorage
-    const savedBackground = localStorage.getItem('chatBackground');
-    if (savedBackground) {
+    const loadBackground = () => {
+      const savedBackground = localStorage.getItem('chatBackground');
       setChatBackground(savedBackground);
-    }
+    };
+    
+    loadBackground();
+    
+    // Listen for storage changes
+    window.addEventListener('storage', loadBackground);
+    return () => window.removeEventListener('storage', loadBackground);
   }, []);
 
   useEffect(() => {
@@ -252,7 +257,6 @@ export const ChatInterface = () => {
 
   const handleFriendSelect = (friendId: string) => {
     setSelectedFriendId(friendId);
-    setShowUserList(false);
   };
 
   const handleSendMessage = async () => {
@@ -323,11 +327,6 @@ export const ChatInterface = () => {
 
     setIsSending(false);
     setUploading(false);
-  };
-
-  const handleBackToList = () => {
-    setShowUserList(true);
-    setSelectedFriendId(null);
   };
 
   const handleAddFriend = async () => {
@@ -412,63 +411,65 @@ export const ChatInterface = () => {
 
   if (!user) return null;
 
-  return (
-    <div className="h-[calc(100vh-4rem)] flex gap-4 md:gap-6 max-w-7xl mx-auto p-2 md:p-6">
-      {/* User List - Mobile: Full screen when visible, Desktop: Always visible */}
-      <div className={`${showUserList ? 'flex' : 'hidden'} md:flex w-full md:w-80 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex-col shadow-xl`}>
-        <UserList
-          users={friends}
-          selectedUserId={selectedFriendId}
-          onUserSelect={handleFriendSelect}
-          onlineUsers={onlineUsers}
-          currentUserId={user.id}
-          onRefresh={fetchFriends}
-          isRefreshing={false}
-        />
-        
-        <div className="p-4 border-t border-border/50 space-y-2">
-          <Dialog open={addFriendDialog} onOpenChange={setAddFriendDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full gap-2">
-                <UserPlus className="h-4 w-4" />
-                Add Friend
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Friend</DialogTitle>
-                <DialogDescription>
-                  Enter your friend's user tag (the 4-digit number) to add them.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
-                  <Label htmlFor="userTag">User Tag</Label>
-                  <Input
-                    id="userTag"
-                    placeholder="1234"
-                    value={friendUserTag}
-                    onChange={(e) => setFriendUserTag(e.target.value)}
-                    maxLength={4}
-                  />
-                </div>
-                <Button onClick={handleAddFriend} className="w-full">
-                  Add Friend
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Badge variant="default" className="w-full justify-center">
-            Connected
-          </Badge>
-        </div>
-      </div>
+  // Map friends with online status
+  const friendsWithStatus = friends.map(friend => ({
+    ...friend,
+    isOnline: onlineUsers.has(friend.id)
+  }));
 
-      {/* Chat Area - Mobile: Full screen when friend selected, Desktop: Always visible */}
+  return (
+    <div className="h-[calc(100vh-4rem)] flex max-w-7xl mx-auto p-2 md:p-6 relative">
+      {/* Floating Friends Sidebar */}
+      <FloatingUserSidebar
+        users={friendsWithStatus}
+        selectedUserId={selectedFriendId}
+        onUserSelect={handleFriendSelect}
+        onlineUsers={onlineUsers}
+        currentUserId={user.id}
+        onRefresh={fetchFriends}
+        isRefreshing={false}
+      />
+
+      {/* Add Friend Dialog */}
+      <Dialog open={addFriendDialog} onOpenChange={setAddFriendDialog}>
+        <DialogTrigger asChild>
+          <Button 
+            className="fixed left-4 top-36 z-50 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all"
+            size="icon"
+          >
+            <UserPlus className="h-6 w-6" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Friend</DialogTitle>
+            <DialogDescription>
+              Enter your friend's user tag (the 4-digit number) to add them.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="userTag">User Tag</Label>
+              <Input
+                id="userTag"
+                placeholder="1234"
+                value={friendUserTag}
+                onChange={(e) => setFriendUserTag(e.target.value)}
+                maxLength={4}
+              />
+            </div>
+            <Button onClick={handleAddFriend} className="w-full">
+              Add Friend
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Chat Area */}
       <div 
-        className={`${!showUserList ? 'flex' : 'hidden'} md:flex flex-1 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex-col shadow-xl relative`}
+        className="flex-1 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden flex flex-col shadow-xl relative"
         style={chatBackground ? {
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${chatBackground})`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${chatBackground})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundAttachment: 'fixed'
@@ -476,19 +477,6 @@ export const ChatInterface = () => {
       >
         {selectedFriend ? (
           <>
-            {/* Mobile back button */}
-            <div className="md:hidden p-2 border-b border-border/50">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBackToList}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </div>
-            
             <ChatHeader
               selectedUser={selectedFriend}
               isOnline={onlineUsers.has(selectedFriendId!)}

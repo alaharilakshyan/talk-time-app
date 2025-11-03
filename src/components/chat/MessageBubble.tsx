@@ -28,6 +28,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
   const senderName = isSent ? 'You' : (message.sender?.username || 'Unknown');
   const avatarUrl = message.sender?.avatar_url;
   const isImage = message.file_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(message.file_url);
+  const isVideo = message.file_url && /\.(mp4|webm|ogg)$/i.test(message.file_url);
 
   if (message.is_deleted) {
     return (
@@ -65,7 +66,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                   <img
                     src={message.file_url}
                     alt={message.file_name || 'Image'}
-                    className="max-w-full rounded-lg max-h-64 object-cover"
+                    className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(message.file_url!, '_blank')}
                   />
                   <div className="flex gap-2">
                     <Button
@@ -76,6 +78,39 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                         const link = document.createElement('a');
                         link.href = message.file_url!;
                         link.download = message.file_name || 'image';
+                        link.click();
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => window.open(message.file_url!, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Open
+                    </Button>
+                  </div>
+                </div>
+              ) : isVideo ? (
+                <div className="space-y-2">
+                  <video
+                    src={message.file_url}
+                    controls
+                    className="max-w-full rounded-lg max-h-64"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = message.file_url!;
+                        link.download = message.file_name || 'video';
                         link.click();
                       }}
                     >

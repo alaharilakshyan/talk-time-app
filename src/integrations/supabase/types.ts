@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       friends: {
         Row: {
           created_at: string | null
@@ -139,10 +163,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_user_tag: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_user_tag: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Upload } from 'lucide-react';
+import { FeedbackDialog } from '@/components/settings/FeedbackDialog';
 
 const Settings = () => {
   const { user, updateProfile } = useAuth();
@@ -129,12 +130,9 @@ const Settings = () => {
     
     toast({
       title: "Success",
-      description: "Chat background updated. Refresh to see changes.",
+      description: "Chat background updated successfully!",
     });
     setUploadingBackground(false);
-    
-    // Reload page to apply background
-    setTimeout(() => window.location.reload(), 1000);
   };
 
   if (!user) return null;
@@ -253,6 +251,7 @@ const Settings = () => {
             className="w-full"
             onClick={() => {
               localStorage.removeItem('chatBackground');
+              window.dispatchEvent(new Event('storage'));
               toast({
                 title: "Success",
                 description: "Chat background reset to default",
@@ -261,6 +260,14 @@ const Settings = () => {
           >
             Reset to Default Background
           </Button>
+        </Card>
+
+        <Card className="p-6 space-y-4 mt-6">
+          <h2 className="text-xl font-semibold">Help & Support</h2>
+          <p className="text-sm text-muted-foreground">
+            Encountered an issue or have a suggestion? Let us know!
+          </p>
+          <FeedbackDialog />
         </Card>
       </div>
   );

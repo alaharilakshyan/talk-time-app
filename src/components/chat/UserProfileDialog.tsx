@@ -86,34 +86,46 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({
           </div>
         ) : profile ? (
           <div className="space-y-6">
-            {/* Profile Info */}
-            <div className="flex flex-col items-center gap-4 text-center">
-              <Avatar className="h-24 w-24 ring-4 ring-background">
+            {/* Profile Header with Background */}
+            <div className="relative -mt-6 -mx-6 mb-4">
+              <div className="h-32 bg-gradient-to-r from-primary/20 to-primary/10" />
+              <Avatar className="absolute -bottom-12 left-1/2 -translate-x-1/2 h-24 w-24 ring-4 ring-background">
                 <AvatarImage src={profile.avatar_url || undefined} />
                 <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
                   {profile.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              
-              <div>
-                <h3 className="text-xl font-semibold">{profile.username}</h3>
-                <p className="text-sm text-muted-foreground">#{profile.user_tag}</p>
-                {profile.bio && (
-                  <p className="text-sm mt-2 text-muted-foreground">{profile.bio}</p>
-                )}
+            </div>
+
+            {/* Profile Info */}
+            <div className="flex flex-col items-center gap-2 text-center mt-14">
+              <h3 className="text-xl font-semibold">{profile.username}</h3>
+              <p className="text-sm text-muted-foreground">#{profile.user_tag}</p>
+              {profile.bio && (
+                <p className="text-sm mt-2 text-muted-foreground max-w-sm">
+                  {profile.bio}
+                </p>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="flex justify-around py-4 border-y">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{sharedMedia.length}</p>
+                <p className="text-xs text-muted-foreground">Media</p>
               </div>
             </div>
 
             {/* Shared Media */}
-            <div className="space-y-2">
-              <h4 className="font-medium">Shared Media ({sharedMedia.length})</h4>
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Shared Media</h4>
               <ScrollArea className="h-48 border rounded-lg p-2">
                 {sharedMedia.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2">
                     {sharedMedia.map((media) => (
                       <div
                         key={media.id}
-                        className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                        className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity hover:scale-105"
                         onClick={() => window.open(media.file_url, '_blank')}
                       >
                         {isImage(media.file_url) ? (

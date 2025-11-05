@@ -75,31 +75,27 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Profile</DialogTitle>
-        </DialogHeader>
-
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : profile ? (
-          <div className="space-y-6">
+          <div className="space-y-0">
             {/* Profile Header with Background */}
-            <div className="relative -mt-6 -mx-6 mb-4">
-              <div className="h-32 bg-gradient-to-r from-primary/20 to-primary/10" />
-              <Avatar className="absolute -bottom-12 left-1/2 -translate-x-1/2 h-24 w-24 ring-4 ring-background">
+            <div className="relative">
+              <div className="h-40 bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10" />
+              <Avatar className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-32 w-32 ring-4 ring-background">
                 <AvatarImage src={profile.avatar_url || undefined} />
-                <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+                <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
                   {profile.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </div>
 
             {/* Profile Info */}
-            <div className="flex flex-col items-center gap-2 text-center mt-14">
-              <h3 className="text-xl font-semibold">{profile.username}</h3>
+            <div className="flex flex-col items-center gap-2 text-center pt-20 px-6 pb-4">
+              <h3 className="text-2xl font-semibold">{profile.username}</h3>
               <p className="text-sm text-muted-foreground">#{profile.user_tag}</p>
               {profile.bio && (
                 <p className="text-sm mt-2 text-muted-foreground max-w-sm">
@@ -108,24 +104,37 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({
               )}
             </div>
 
-            {/* Stats */}
-            <div className="flex justify-around py-4 border-y">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{sharedMedia.length}</p>
-                <p className="text-xs text-muted-foreground">Media</p>
+            {/* Divider */}
+            <div className="h-2 bg-muted/30" />
+
+            {/* Info Section */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Username</p>
+                <p className="text-sm font-medium">{profile.username}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">User Tag</p>
+                <p className="text-sm font-medium">#{profile.user_tag}</p>
               </div>
             </div>
 
+            {/* Divider */}
+            <div className="h-2 bg-muted/30" />
+
             {/* Shared Media */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Shared Media</h4>
-              <ScrollArea className="h-48 border rounded-lg p-2">
+            <div className="px-6 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-sm">Media, Links and Docs</h4>
+                <p className="text-sm text-primary">{sharedMedia.length}</p>
+              </div>
+              <ScrollArea className="h-64">
                 {sharedMedia.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1">
                     {sharedMedia.map((media) => (
                       <div
                         key={media.id}
-                        className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity hover:scale-105"
+                        className="aspect-square rounded overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => window.open(media.file_url, '_blank')}
                       >
                         {isImage(media.file_url) ? (
@@ -135,7 +144,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs text-center p-2">
+                          <div className="w-full h-full flex items-center justify-center text-xs text-center p-2 break-words">
                             {media.file_name || 'File'}
                           </div>
                         )}
@@ -143,8 +152,8 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                    No shared media yet
+                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground py-8">
+                    <p>No media shared yet</p>
                   </div>
                 )}
               </ScrollArea>

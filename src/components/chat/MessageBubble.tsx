@@ -39,25 +39,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
   }
 
   return (
-    <div className={`flex gap-2 md:gap-3 mb-3 md:mb-4 animate-fade-in ${isSent ? 'justify-end' : 'justify-start'}`}>
-      {!isSent && (
-        <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
-          <AvatarImage src={avatarUrl || undefined} alt={senderName} />
-          <AvatarFallback className="text-xs">{senderName.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-      )}
-      
-      <div className={`flex flex-col max-w-[75%] md:max-w-[70%] ${isSent ? 'items-end' : 'items-start'}`}>
-        {!isSent && (
-          <span className="text-xs md:text-sm font-medium mb-1 px-1">
-            {senderName}
-          </span>
-        )}
-        
-        <div className={`rounded-2xl px-3 py-2 md:px-4 md:py-2.5 shadow-sm ${
+    <div className={`flex gap-2 mb-2 animate-fade-in ${isSent ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${isSent ? 'items-end' : 'items-start'}`}>
+        <div className={`rounded-lg px-3 py-2 shadow-sm relative ${
           isSent 
-            ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-            : 'bg-card border border-border/50 rounded-tl-sm'
+            ? 'bg-[hsl(var(--chart-2))] text-white' 
+            : 'bg-card'
         }`}>
           {message.file_url && (
             <div className="mb-2">
@@ -73,7 +60,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs"
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = message.file_url!;
@@ -87,7 +74,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs"
                       onClick={() => window.open(message.file_url!, '_blank')}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
@@ -106,7 +93,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs"
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = message.file_url!;
@@ -120,7 +107,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs"
                       onClick={() => window.open(message.file_url!, '_blank')}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
@@ -143,7 +130,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs"
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = message.file_url!;
@@ -157,7 +144,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs"
                       onClick={() => window.open(message.file_url!, '_blank')}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
@@ -169,12 +156,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
             </div>
           )}
           {message.content && message.content !== 'Sent a file' && (
-            <p className="text-sm md:text-base break-words whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
               {message.content}
             </p>
           )}
-          <span className={`text-xs mt-1.5 block ${
-            isSent ? 'text-primary-foreground/70' : 'text-muted-foreground'
+          <span className={`text-[10px] mt-1 block ${
+            isSent ? 'text-white/70' : 'text-muted-foreground'
           }`}>
             {new Date(message.created_at).toLocaleTimeString('en-US', {
               hour: '2-digit',
@@ -183,13 +170,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent })
           </span>
         </div>
       </div>
-      
-      {isSent && (
-        <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
-          <AvatarImage src={avatarUrl || undefined} alt={senderName} />
-          <AvatarFallback className="text-xs">{senderName.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-      )}
     </div>
   );
 };

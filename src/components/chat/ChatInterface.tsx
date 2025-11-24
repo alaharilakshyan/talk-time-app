@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLiveNotifications } from '@/hooks/useLiveNotifications';
+import { encryptMessage } from '@/utils/encryption';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
@@ -66,6 +68,16 @@ export const ChatInterface = () => {
   const [chatBackground, setChatBackground] = useState<string | null>(null);
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
+
+  // Live notifications for new messages
+  useLiveNotifications({
+    userId: user?.id || '',
+    currentChatUserId: selectedFriendId,
+    onNewMessage: (newMessage) => {
+      // Refresh friends list to update unread counts
+      fetchFriends();
+    },
+  });
 
   // Fetch friends
   const fetchFriends = async () => {
@@ -247,6 +259,20 @@ export const ChatInterface = () => {
             }
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+          },
+          (payload: any) => {
+            // Update message if it's deleted or modified
+            if (payload.new.sender_id === selectedFriendId || payload.new.receiver_id === selectedFriendId) {
+              setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
+            }
+          }
+        )
         .subscribe();
 
       return () => {
@@ -268,6 +294,7 @@ export const ChatInterface = () => {
     let fileUrl = null;
     let fileName = null;
     let fileSize = null;
+    let messageContent = newMessage.trim();
 
     if (selectedFile) {
       const fileExt = selectedFile.name.split('.').pop();
@@ -295,14 +322,24 @@ export const ChatInterface = () => {
       fileUrl = urlData.publicUrl;
       fileName = selectedFile.name;
       fileSize = selectedFile.size;
+      
+      // Check if it's a voice message
+      if (selectedFile.type.startsWith('audio/') && !messageContent) {
+        messageContent = '[Voice message]';
+      } else if (!messageContent) {
+        messageContent = 'Sent a file';
+      }
     }
+
+    // Encrypt message content
+    const encryptedContent = await encryptMessage(messageContent, user.id);
 
     const { data, error } = await supabase
       .from('messages')
       .insert({
         sender_id: user.id,
         receiver_id: selectedFriendId,
-        content: newMessage.trim() || 'Sent a file',
+        content: encryptedContent,
         file_url: fileUrl,
         file_name: fileName,
         file_size: fileSize,
@@ -327,6 +364,12 @@ export const ChatInterface = () => {
 
     setIsSending(false);
     setUploading(false);
+  };
+
+  const handleVoiceRecording = (file: File) => {
+    setSelectedFile(file);
+    // Auto-send voice message
+    setTimeout(() => handleSendMessage(), 100);
   };
 
   const handleAddFriend = async () => {
@@ -490,6 +533,7 @@ export const ChatInterface = () => {
               messages={messages}
               currentUserId={user.id}
               isLoading={isLoading}
+              onDelete={(messageId) => setMessages(prev => prev.map(m => m.id === messageId ? { ...m, is_deleted: true } : m))}
             />
             <ChatInput
               value={newMessage}
@@ -499,6 +543,7 @@ export const ChatInterface = () => {
               onFileSelect={setSelectedFile}
               selectedFile={selectedFile}
               onClearFile={() => setSelectedFile(null)}
+              onVoiceRecordingComplete={handleVoiceRecording}
             />
           </>
         ) : (

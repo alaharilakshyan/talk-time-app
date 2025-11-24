@@ -22,12 +22,14 @@ interface ChatMessagesProps {
   messages: Message[];
   currentUserId: string;
   isLoading?: boolean;
+  onDelete?: (messageId: string) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
   currentUserId,
-  isLoading = false
+  isLoading = false,
+  onDelete
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +61,8 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               isSent: message.sender_id === currentUserId
             }}
             isSent={message.sender_id === currentUserId}
+            currentUserId={currentUserId}
+            onDelete={onDelete}
           />
         ))}
         <div ref={scrollRef} />

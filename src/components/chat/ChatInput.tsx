@@ -1,7 +1,9 @@
-import React, { KeyboardEvent, useRef } from 'react';
+import React, { KeyboardEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Paperclip, X } from 'lucide-react';
+import { Send, Paperclip, X, Mic, StopCircle } from 'lucide-react';
+import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   value: string;
@@ -11,6 +13,7 @@ interface ChatInputProps {
   onFileSelect: (file: File) => void;
   selectedFile: File | null;
   onClearFile: () => void;
+  onVoiceRecordingComplete?: (file: File) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -21,8 +24,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onFileSelect,
   selectedFile,
   onClearFile,
+  onVoiceRecordingComplete,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isRecording, recordingTime, startRecording, stopRecording, cancelRecording } = useVoiceRecording();
 
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -44,12 +49,50 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
+  const handleVoiceRecord = async () => {
+    if (isRecording) {
+      const recording = await stopRecording();
+      if (recording && onVoiceRecordingComplete) {
+        // Convert blob to file
+        const file = new File([recording.blob], `voice-${Date.now()}.webm`, {
+          type: 'audio/webm;codecs=opus',
+        });
+        onVoiceRecordingComplete(file);
+      }
+    } else {
+      startRecording();
+    }
+  };
+
+  const formatRecordingTime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const isImage = selectedFile && selectedFile.type.startsWith('image/');
   const isVideo = selectedFile && selectedFile.type.startsWith('video/');
   const previewUrl = selectedFile ? URL.createObjectURL(selectedFile) : null;
 
   return (
     <div className="p-4 border-t">
+      {isRecording && (
+        <div className="mb-2 p-3 bg-destructive/10 rounded-lg flex items-center gap-3">
+          <div className="flex-1 flex items-center gap-2">
+            <div className="h-3 w-3 bg-destructive rounded-full animate-pulse" />
+            <span className="text-sm font-medium">Recording: {formatRecordingTime(recordingTime)}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={cancelRecording}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+      
       {selectedFile && (
         <div className="mb-2 p-2 bg-muted rounded-lg space-y-2">
           {isImage && previewUrl && (
@@ -96,30 +139,44 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           variant="outline"
           size="icon"
           onClick={handleFileClick}
-          disabled={isDisabled}
+          disabled={isDisabled || isRecording}
           className="shrink-0"
         >
           <Paperclip className="h-4 w-4" />
         </Button>
+        
         <Textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyPress}
-          placeholder="Type a message..."
+          placeholder={isRecording ? "Recording..." : "Type a message..."}
           className="min-h-[20px] max-h-[120px] resize-none"
-          disabled={isDisabled}
+          disabled={isDisabled || isRecording}
         />
-        <Button
-          size="icon"
-          onClick={onSend}
-          disabled={(!value.trim() && !selectedFile) || isDisabled}
-        >
-          <Send className="h-4 w-4" />
-          <span className="sr-only">Send message</span>
-        </Button>
+        
+        {!value.trim() && !selectedFile ? (
+          <Button
+            size="icon"
+            onClick={handleVoiceRecord}
+            disabled={isDisabled}
+            className={cn(isRecording && "bg-destructive hover:bg-destructive/90")}
+          >
+            {isRecording ? <StopCircle className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            <span className="sr-only">{isRecording ? 'Stop recording' : 'Record voice message'}</span>
+          </Button>
+        ) : (
+          <Button
+            size="icon"
+            onClick={onSend}
+            disabled={(!value.trim() && !selectedFile) || isDisabled}
+          >
+            <Send className="h-4 w-4" />
+            <span className="sr-only">Send message</span>
+          </Button>
+        )}
       </div>
       <p className="text-xs text-muted-foreground mt-2">
-        Press Enter to send, Shift + Enter for new line
+        {isRecording ? 'Click stop to send voice message' : 'Press Enter to send, Shift + Enter for new line'}
       </p>
     </div>
   );

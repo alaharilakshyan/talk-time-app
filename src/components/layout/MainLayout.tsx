@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Home, Settings, LogOut } from 'lucide-react';
+import { MessageCircle, Home, Settings, LogOut, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -36,43 +37,76 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const NavLinks = () => (
+    <>
+      <Button
+        variant={isActive('/') ? 'secondary' : 'ghost'}
+        size="sm"
+        asChild
+        className="w-full sm:w-auto justify-start"
+      >
+        <Link to="/">
+          <Home className="h-4 w-4 mr-2" />
+          Home
+        </Link>
+      </Button>
+      <Button
+        variant={isActive('/chat') ? 'secondary' : 'ghost'}
+        size="sm"
+        asChild
+        className="w-full sm:w-auto justify-start"
+      >
+        <Link to="/chat">
+          <MessageCircle className="h-4 w-4 mr-2" />
+          Chat
+        </Link>
+      </Button>
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-rose-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       {/* Top Navigation Bar */}
-      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+      <nav className="border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="container flex h-14 items-center px-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 mr-6">
-            <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-rose-400 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">TT</span>
+          <Link to="/" className="flex items-center space-x-2 mr-4 md:mr-6">
+            <img 
+              src="/chatbuzz-logo.png" 
+              alt="ChatBuzz" 
+              className="w-8 h-8 rounded-lg"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div className="hidden w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg items-center justify-center">
+              <span className="text-white font-bold text-sm">CB</span>
             </div>
-            <span className="hidden font-bold sm:inline-block bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">
-              TalkTime
+            <span className="hidden font-bold sm:inline-block bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              ChatBuzz
             </span>
           </Link>
 
-          {/* Main Navigation */}
-          <div className="flex items-center space-x-2 mr-4">
-            <Button
-              variant={isActive('/') ? 'secondary' : 'ghost'}
-              size="sm"
-              asChild
-            >
-              <Link to="/">
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </Link>
-            </Button>
-            <Button
-              variant={isActive('/chat') ? 'secondary' : 'ghost'}
-              size="sm"
-              asChild
-            >
-              <Link to="/chat">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Chat
-              </Link>
-            </Button>
+          {/* Desktop Navigation */}
+          <div className="hidden sm:flex items-center space-x-2 mr-4">
+            <NavLinks />
+          </div>
+
+          {/* Mobile Menu */}
+          <div className="sm:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64">
+                <div className="flex flex-col space-y-2 mt-6">
+                  <NavLinks />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
 
           {/* Right Side Controls */}
@@ -83,9 +117,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-8 w-8 ring-2 ring-primary/20">
                       <AvatarImage src={user.avatar} alt={user.username} />
-                      <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                        {user.username.charAt(0).toUpperCase()}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -105,7 +141,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
@@ -117,9 +153,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto p-4">
+      <main className="container mx-auto p-2 sm:p-4">
         {children}
       </main>
     </div>
   );
-}; 
+};

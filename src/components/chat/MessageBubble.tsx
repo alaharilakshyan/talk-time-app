@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { FileText, Download, ExternalLink, Trash2, Volume2, Pause, Play } from 'lucide-react';
+import { FileText, Download, ExternalLink, Trash2, Volume2, Pause, Play, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageReactions } from './MessageReactions';
+import { OneTimeViewImage } from './OneTimeViewImage';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { decryptMessage, isEncrypted } from '@/utils/encryption';
@@ -16,6 +16,8 @@ interface Message {
   file_name: string | null;
   is_deleted: boolean;
   created_at: string;
+  is_one_time_view?: boolean;
+  viewed_by?: string[];
   isSent?: boolean;
   sender?: {
     username: string;
@@ -32,14 +34,13 @@ interface MessageBubbleProps {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, currentUserId, onDelete }) => {
   const { toast } = useToast();
-  const senderName = isSent ? 'You' : (message.sender?.username || 'Unknown');
-  const avatarUrl = message.sender?.avatar_url;
   const isImage = message.file_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(message.file_url);
   const isVideo = message.file_url && /\.(mp4|webm|ogg)$/i.test(message.file_url);
   const isAudio = message.file_url && /\.(mp3|wav|webm|ogg|m4a)$/i.test(message.file_url) && message.content === '[Voice message]';
   const [decryptedContent, setDecryptedContent] = useState<string>(message.content);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioElement] = useState(() => new Audio());
+  const [audioProgress, setAudioProgress] = useState(0);
 
   useEffect(() => {
     const decrypt = async () => {
@@ -51,6 +52,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
     decrypt();
   }, [message.content, currentUserId]);
 
+  useEffect(() => {
+    const updateProgress = () => {
+      if (audioElement.duration) {
+        setAudioProgress((audioElement.currentTime / audioElement.duration) * 100);
+      }
+    };
+    audioElement.addEventListener('timeupdate', updateProgress);
+    return () => audioElement.removeEventListener('timeupdate', updateProgress);
+  }, [audioElement]);
+
   const handleDelete = async () => {
     try {
       const { error } = await supabase
@@ -60,7 +71,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
 
       if (error) throw error;
 
-      // Delete file from storage if exists
       if (message.file_url) {
         const filePath = message.file_url.split('/').slice(-2).join('/');
         await supabase.storage.from('chat-files').remove([filePath]);
@@ -94,69 +104,97 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
       
       audioElement.onended = () => {
         setIsPlaying(false);
+        setAudioProgress(0);
       };
     }
   };
 
   if (message.is_deleted) {
     return (
-      <div className={`flex gap-2 md:gap-3 mb-3 md:mb-4 ${isSent ? 'justify-end' : 'justify-start'}`}>
-        <div className="italic text-muted-foreground text-sm">Message deleted</div>
+      <div className={`flex gap-2 mb-3 ${isSent ? 'justify-end' : 'justify-start'}`}>
+        <div className="px-4 py-2 rounded-2xl bg-muted/30 italic text-muted-foreground text-sm">
+          🗑️ Message deleted
+        </div>
       </div>
     );
   }
 
+  // Check if this is a one-time view image
+  const isOneTimeView = message.is_one_time_view && isImage;
+
   return (
-    <div className={`flex gap-2 mb-2 animate-fade-in group ${isSent ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${isSent ? 'items-end' : 'items-start'}`}>
-        <div className={`rounded-2xl px-3 py-2 shadow-sm relative ${
+    <div className={`flex gap-2 mb-3 animate-fade-in group ${isSent ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex flex-col max-w-[80%] sm:max-w-[70%] ${isSent ? 'items-end' : 'items-start'}`}>
+        <div className={`relative rounded-2xl px-4 py-2.5 shadow-md backdrop-blur-sm transition-all ${
           isSent 
-            ? 'bg-primary text-primary-foreground rounded-tr-none' 
-            : 'bg-card rounded-tl-none'
+            ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-md' 
+            : 'bg-card/90 border border-border/50 rounded-bl-md'
         }`}>
+          {/* Delete button */}
           {isSent && (
             <Button
               variant="ghost"
               size="sm"
-              className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+              className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
               onClick={handleDelete}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
           
-          {isAudio && message.file_url ? (
-            <div className="flex items-center gap-2 min-w-[200px]">
+          {/* One-time view image */}
+          {isOneTimeView && message.file_url ? (
+            <OneTimeViewImage
+              imageUrl={message.file_url}
+              messageId={message.id}
+              currentUserId={currentUserId}
+              viewedBy={message.viewed_by || []}
+              isSender={isSent}
+            />
+          ) : isAudio && message.file_url ? (
+            /* Voice message */
+            <div className="flex items-center gap-3 min-w-[200px]">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 rounded-full"
+                className={`h-10 w-10 p-0 rounded-full ${isSent ? 'hover:bg-white/20' : 'hover:bg-primary/10'}`}
                 onClick={toggleAudioPlayback}
               >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {isPlaying ? (
+                  <Pause className="h-5 w-5" />
+                ) : (
+                  <Play className="h-5 w-5 ml-0.5" />
+                )}
               </Button>
-              <div className="flex-1 flex items-center gap-2">
-                <Volume2 className="h-4 w-4" />
-                <div className="flex-1 h-1 bg-background/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-background/40 w-1/3" />
+              <div className="flex-1 flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 opacity-70" />
+                  <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isSent ? 'bg-white/20' : 'bg-muted'}`}>
+                    <div 
+                      className={`h-full transition-all ${isSent ? 'bg-white/60' : 'bg-primary/60'}`}
+                      style={{ width: `${audioProgress}%` }}
+                    />
+                  </div>
                 </div>
+                <span className="text-[10px] opacity-60">Voice message</span>
               </div>
             </div>
           ) : message.file_url && (
+            /* Regular file/image/video */
             <div className="mb-2">
               {isImage ? (
                 <div className="space-y-2">
                   <img
                     src={message.file_url}
                     alt={message.file_name || 'Image'}
-                    className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    className="max-w-full rounded-xl max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
                     onClick={() => window.open(message.file_url!, '_blank')}
                   />
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant="secondary"
-                      className="flex-1 h-7 text-xs"
+                      variant={isSent ? "secondary" : "outline"}
+                      className="flex-1 h-8 text-xs rounded-full"
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = message.file_url!;
@@ -169,8 +207,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
                     </Button>
                     <Button
                       size="sm"
-                      variant="secondary"
-                      className="flex-1 h-7 text-xs"
+                      variant={isSent ? "secondary" : "outline"}
+                      className="flex-1 h-8 text-xs rounded-full"
                       onClick={() => window.open(message.file_url!, '_blank')}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
@@ -183,13 +221,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
                   <video
                     src={message.file_url}
                     controls
-                    className="max-w-full rounded-lg max-h-64"
+                    className="max-w-full rounded-xl max-h-64 shadow-sm"
                   />
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant="secondary"
-                      className="flex-1 h-7 text-xs"
+                      variant={isSent ? "secondary" : "outline"}
+                      className="flex-1 h-8 text-xs rounded-full"
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = message.file_url!;
@@ -200,15 +238,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
                       <Download className="h-3 w-3 mr-1" />
                       Save
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="flex-1 h-7 text-xs"
-                      onClick={() => window.open(message.file_url!, '_blank')}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Open
-                    </Button>
                   </div>
                 </div>
               ) : (
@@ -217,47 +246,44 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
                     href={message.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-2 bg-background/10 rounded-lg hover:bg-background/20 transition-colors"
+                    className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                      isSent ? 'bg-white/10 hover:bg-white/20' : 'bg-muted/50 hover:bg-muted'
+                    }`}
                   >
-                    <FileText className="h-5 w-5" />
-                    <span className="text-sm truncate">{message.file_name}</span>
+                    <div className={`p-2 rounded-lg ${isSent ? 'bg-white/20' : 'bg-primary/10'}`}>
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <span className="text-sm truncate font-medium">{message.file_name}</span>
                   </a>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="flex-1 h-7 text-xs"
-                      onClick={() => {
-                        const link = document.createElement('a');
-                        link.href = message.file_url!;
-                        link.download = message.file_name || 'file';
-                        link.click();
-                      }}
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="flex-1 h-7 text-xs"
-                      onClick={() => window.open(message.file_url!, '_blank')}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Open
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant={isSent ? "secondary" : "outline"}
+                    className="w-full h-8 text-xs rounded-full"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = message.file_url!;
+                      link.download = message.file_name || 'file';
+                      link.click();
+                    }}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Download
+                  </Button>
                 </div>
               )}
             </div>
           )}
+          
+          {/* Text content */}
           {decryptedContent && decryptedContent !== 'Sent a file' && decryptedContent !== '[Voice message]' && (
             <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
               {decryptedContent}
             </p>
           )}
-          <span className={`text-[10px] mt-1 block ${
-            isSent ? 'opacity-70' : 'text-muted-foreground'
+          
+          {/* Timestamp */}
+          <span className={`text-[10px] mt-1.5 block ${
+            isSent ? 'opacity-70 text-right' : 'text-muted-foreground'
           }`}>
             {new Date(message.created_at).toLocaleTimeString('en-US', {
               hour: '2-digit',
@@ -266,6 +292,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
           </span>
         </div>
         
+        {/* Reactions */}
         <MessageReactions messageId={message.id} currentUserId={currentUserId} />
       </div>
     </div>

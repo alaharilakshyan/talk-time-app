@@ -21,6 +21,7 @@ interface Message {
 interface ChatMessagesProps {
   messages: Message[];
   currentUserId: string;
+  otherUserId: string;
   isLoading?: boolean;
   onDelete?: (messageId: string) => void;
 }
@@ -28,6 +29,7 @@ interface ChatMessagesProps {
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
   currentUserId,
+  otherUserId,
   isLoading = false,
   onDelete
 }) => {
@@ -62,6 +64,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             }}
             isSent={message.sender_id === currentUserId}
             currentUserId={currentUserId}
+            otherUserId={otherUserId}
             onDelete={onDelete}
           />
         ))}

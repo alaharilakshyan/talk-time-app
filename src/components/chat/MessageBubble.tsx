@@ -29,28 +29,41 @@ interface MessageBubbleProps {
   message: Message;
   isSent: boolean;
   currentUserId: string;
+  otherUserId: string;
   onDelete?: (messageId: string) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, currentUserId, onDelete }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, currentUserId, otherUserId, onDelete }) => {
   const { toast } = useToast();
   const isImage = message.file_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(message.file_url);
   const isVideo = message.file_url && /\.(mp4|webm|ogg)$/i.test(message.file_url);
   const isAudio = message.file_url && /\.(mp3|wav|webm|ogg|m4a)$/i.test(message.file_url) && message.content === '[Voice message]';
-  const [decryptedContent, setDecryptedContent] = useState<string>(message.content);
+  const [decryptedContent, setDecryptedContent] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioElement] = useState(() => new Audio());
   const [audioProgress, setAudioProgress] = useState(0);
+  const [isDecrypting, setIsDecrypting] = useState(true);
 
+  // Decrypt message in background when component mounts or message changes
   useEffect(() => {
     const decrypt = async () => {
-      if (message.content && isEncrypted(message.content)) {
-        const decrypted = await decryptMessage(message.content, currentUserId);
-        setDecryptedContent(decrypted);
+      setIsDecrypting(true);
+      try {
+        if (message.content) {
+          // Use conversation key for decryption
+          const decrypted = await decryptMessage(message.content, currentUserId, otherUserId);
+          setDecryptedContent(decrypted);
+        } else {
+          setDecryptedContent('');
+        }
+      } catch (error) {
+        console.error('Decryption failed:', error);
+        setDecryptedContent(message.content);
       }
+      setIsDecrypting(false);
     };
     decrypt();
-  }, [message.content, currentUserId]);
+  }, [message.content, currentUserId, otherUserId]);
 
   useEffect(() => {
     const updateProgress = () => {

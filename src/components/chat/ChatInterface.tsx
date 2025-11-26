@@ -331,8 +331,8 @@ export const ChatInterface = () => {
       }
     }
 
-    // Encrypt message content
-    const encryptedContent = await encryptMessage(messageContent, user.id);
+    // Encrypt message content with conversation key (both users can decrypt)
+    const encryptedContent = await encryptMessage(messageContent, user.id, selectedFriendId);
 
     const { data, error } = await supabase
       .from('messages')
@@ -532,6 +532,7 @@ export const ChatInterface = () => {
             <ChatMessages
               messages={messages}
               currentUserId={user.id}
+              otherUserId={selectedFriendId!}
               isLoading={isLoading}
               onDelete={(messageId) => setMessages(prev => prev.map(m => m.id === messageId ? { ...m, is_deleted: true } : m))}
             />

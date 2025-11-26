@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { UserList } from './UserList';
-import { Users } from 'lucide-react';
+import { Users, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { CreateGroupDialog } from './CreateGroupDialog';
+import { GroupList } from './GroupList';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface User {
   id: string;
@@ -33,8 +36,8 @@ export const FloatingUserSidebar: React.FC<FloatingUserSidebarProps> = ({
   isRefreshing,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [groupRefresh, setGroupRefresh] = useState(0);
 
-  // Map users with online status
   const usersWithStatus = users.map(user => ({
     ...user,
     isOnline: onlineUsers.has(user.id)
@@ -42,33 +45,75 @@ export const FloatingUserSidebar: React.FC<FloatingUserSidebarProps> = ({
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button - Hidden on mobile when chat is active */}
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed left-4 top-20 z-50 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all"
+        className="fixed left-4 top-20 z-50 rounded-2xl h-12 w-12 sm:h-14 sm:w-14 shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0 hidden sm:flex"
         size="icon"
       >
-        <Users className="h-6 w-6" />
+        <Users className="h-5 w-5 sm:h-6 sm:w-6" />
       </Button>
+
+      {/* Mobile bottom bar trigger */}
+      <div className="fixed bottom-0 left-0 right-0 sm:hidden z-50 p-2 bg-background/95 backdrop-blur-xl border-t">
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="w-full rounded-xl h-12 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0 gap-2"
+        >
+          <Users className="h-5 w-5" />
+          <span>Friends & Groups</span>
+        </Button>
+      </div>
 
       {/* Sidebar Sheet */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="w-80 p-0">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle>Friends</SheetTitle>
+        <SheetContent side="left" className="w-full sm:w-80 p-0">
+          <SheetHeader className="p-4 border-b bg-gradient-to-r from-emerald-500/10 to-teal-500/10">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Chats
+              </SheetTitle>
+              <CreateGroupDialog onGroupCreated={() => setGroupRefresh(prev => prev + 1)} />
+            </div>
           </SheetHeader>
-          <UserList
-            users={usersWithStatus}
-            selectedUserId={selectedUserId}
-            onUserSelect={(userId) => {
-              onUserSelect(userId);
-              setIsOpen(false);
-            }}
-            onlineUsers={onlineUsers}
-            currentUserId={currentUserId}
-            onRefresh={onRefresh}
-            isRefreshing={isRefreshing}
-          />
+          
+          <Tabs defaultValue="friends" className="flex-1">
+            <TabsList className="w-full rounded-none border-b bg-transparent h-12">
+              <TabsTrigger value="friends" className="flex-1 rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                Friends
+              </TabsTrigger>
+              <TabsTrigger value="groups" className="flex-1 rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                Groups
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="friends" className="m-0 h-[calc(100vh-180px)]">
+              <UserList
+                users={usersWithStatus}
+                selectedUserId={selectedUserId}
+                onUserSelect={(userId) => {
+                  onUserSelect(userId);
+                  setIsOpen(false);
+                }}
+                onlineUsers={onlineUsers}
+                currentUserId={currentUserId}
+                onRefresh={onRefresh}
+                isRefreshing={isRefreshing}
+              />
+            </TabsContent>
+            
+            <TabsContent value="groups" className="m-0 h-[calc(100vh-180px)]">
+              <GroupList
+                selectedGroupId={null}
+                onGroupSelect={(groupId) => {
+                  // TODO: Handle group selection
+                  setIsOpen(false);
+                }}
+                refreshTrigger={groupRefresh}
+              />
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
     </>

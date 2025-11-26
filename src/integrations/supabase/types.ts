@@ -77,6 +77,62 @@ export type Database = {
           },
         ]
       }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -84,10 +140,13 @@ export type Database = {
           file_name: string | null
           file_size: number | null
           file_url: string | null
+          group_id: string | null
           id: string
           is_deleted: boolean | null
+          is_one_time_view: boolean | null
           receiver_id: string
           sender_id: string
+          viewed_by: string[] | null
         }
         Insert: {
           content: string
@@ -95,10 +154,13 @@ export type Database = {
           file_name?: string | null
           file_size?: number | null
           file_url?: string | null
+          group_id?: string | null
           id?: string
           is_deleted?: boolean | null
+          is_one_time_view?: boolean | null
           receiver_id: string
           sender_id: string
+          viewed_by?: string[] | null
         }
         Update: {
           content?: string
@@ -106,12 +168,22 @@ export type Database = {
           file_name?: string | null
           file_size?: number | null
           file_url?: string | null
+          group_id?: string | null
           id?: string
           is_deleted?: boolean | null
+          is_one_time_view?: boolean | null
           receiver_id?: string
           sender_id?: string
+          viewed_by?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_receiver_id_fkey"
             columns: ["receiver_id"]

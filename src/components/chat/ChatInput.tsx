@@ -1,7 +1,7 @@
 import React, { KeyboardEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Paperclip, X, Mic, StopCircle } from 'lucide-react';
+import { Send, Paperclip, X, Mic, StopCircle, Eye, EyeOff } from 'lucide-react';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +14,8 @@ interface ChatInputProps {
   selectedFile: File | null;
   onClearFile: () => void;
   onVoiceRecordingComplete?: (file: File) => void;
+  isOneTimeView?: boolean;
+  onOneTimeViewToggle?: (enabled: boolean) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -25,6 +27,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   selectedFile,
   onClearFile,
   onVoiceRecordingComplete,
+  isOneTimeView = false,
+  onOneTimeViewToggle,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isRecording, recordingTime, startRecording, stopRecording, cancelRecording } = useVoiceRecording();
@@ -116,6 +120,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <div className="flex items-center gap-2">
             <Paperclip className="h-4 w-4" />
             <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
+            {isImage && onOneTimeViewToggle && (
+              <Button
+                variant={isOneTimeView ? "default" : "ghost"}
+                size="sm"
+                onClick={() => onOneTimeViewToggle(!isOneTimeView)}
+                className="h-6 px-2 gap-1"
+                title={isOneTimeView ? "View once enabled" : "Click to enable view once"}
+              >
+                {isOneTimeView ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                <span className="text-xs">{isOneTimeView ? "1x" : ""}</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

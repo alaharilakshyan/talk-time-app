@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Download, ExternalLink, Trash2, Volume2, Pause, Play, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { MessageReactions } from './MessageReactions';
 import { OneTimeViewImage } from './OneTimeViewImage';
 import { useToast } from '@/hooks/use-toast';
@@ -43,18 +53,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
   const [audioElement] = useState(() => new Audio());
   const [audioProgress, setAudioProgress] = useState(0);
   const [isDecrypting, setIsDecrypting] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [isLongPress, setIsLongPress] = useState(false);
 
   // Decrypt message in background when component mounts or message changes
   useEffect(() => {
     const decrypt = async () => {
       setIsDecrypting(true);
       try {
-        if (message.content) {
+        if (message.content && isEncrypted(message.content)) {
           // Use conversation key for decryption
           const decrypted = await decryptMessage(message.content, currentUserId, otherUserId);
           setDecryptedContent(decrypted);
         } else {
-          setDecryptedContent('');
+          setDecryptedContent(message.content || '');
         }
       } catch (error) {
         console.error('Decryption failed:', error);
@@ -102,6 +115,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
         variant: 'destructive',
       });
     }
+    setShowDeleteDialog(false);
+  };
+
+  const handleTouchStart = () => {
+    if (!isSent) return;
+    setIsLongPress(false);
+    longPressTimer.current = setTimeout(() => {
+      setIsLongPress(true);
+      setShowDeleteDialog(true);
+      // Haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
   };
 
   const toggleAudioPlayback = () => {
@@ -138,11 +172,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
   return (
     <div className={`flex gap-2 mb-3 animate-fade-in group ${isSent ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex flex-col max-w-[80%] sm:max-w-[70%] ${isSent ? 'items-end' : 'items-start'}`}>
-        <div className={`relative rounded-2xl px-4 py-2.5 shadow-md backdrop-blur-sm transition-all ${
-          isSent 
-            ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-md' 
-            : 'bg-card/90 border border-border/50 rounded-bl-md'
-        }`}>
+        <div 
+          className={`relative rounded-2xl px-4 py-2.5 shadow-md backdrop-blur-sm transition-all ${
+            isSent 
+              ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-md' 
+              : 'bg-card/90 border border-border/50 rounded-bl-md'
+          }`}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleTouchStart}
+          onMouseUp={handleTouchEnd}
+          onMouseLeave={handleTouchEnd}
+        >
           {/* Delete button */}
           {isSent && (
             <Button
@@ -308,6 +349,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
         {/* Reactions */}
         <MessageReactions messageId={message.id} currentUserId={currentUserId} />
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this message? This action cannot be undone and will delete the message for everyone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

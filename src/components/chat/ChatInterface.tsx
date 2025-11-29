@@ -66,6 +66,8 @@ export const ChatInterface = () => {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [chatBackground, setChatBackground] = useState<string | null>(null);
+  const [isOneTimeView, setIsOneTimeView] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
 
@@ -139,6 +141,7 @@ export const ChatInterface = () => {
         sender:profiles!sender_id (username, avatar_url)
       `)
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
+      .is('group_id', null)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -334,6 +337,8 @@ export const ChatInterface = () => {
     // Encrypt message content with conversation key (both users can decrypt)
     const encryptedContent = await encryptMessage(messageContent, user.id, selectedFriendId);
 
+    const isImage = selectedFile && selectedFile.type.startsWith('image/');
+    
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -343,6 +348,8 @@ export const ChatInterface = () => {
         file_url: fileUrl,
         file_name: fileName,
         file_size: fileSize,
+        is_one_time_view: isImage && isOneTimeView,
+        viewed_by: [],
       })
       .select(`
         *,
@@ -360,6 +367,7 @@ export const ChatInterface = () => {
       setMessages(prev => [...prev, data]);
       setNewMessage('');
       setSelectedFile(null);
+      setIsOneTimeView(false);
     }
 
     setIsSending(false);
@@ -461,7 +469,8 @@ export const ChatInterface = () => {
   }));
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex max-w-7xl mx-auto p-2 md:p-6 relative">
+    <div className="h-[calc(100vh-4rem)] flex max-w-7xl mx-auto p-2 md:p-6 pb-20 md:pb-6 relative"
+>
       {/* Floating Friends Sidebar */}
       <FloatingUserSidebar
         users={friendsWithStatus}
@@ -477,7 +486,8 @@ export const ChatInterface = () => {
       <Dialog open={addFriendDialog} onOpenChange={setAddFriendDialog}>
         <DialogTrigger asChild>
           <Button 
-            className="fixed left-4 top-36 z-50 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all"
+            data-add-friend-trigger
+            className="fixed left-4 top-36 z-40 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all hidden md:flex"
             size="icon"
           >
             <UserPlus className="h-6 w-6" />
@@ -528,9 +538,13 @@ export const ChatInterface = () => {
               onRefresh={() => fetchMessages(selectedFriendId!)}
               isRefreshing={isLoading}
               onUserClick={() => setProfileDialogOpen(true)}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
             />
             <ChatMessages
-              messages={messages}
+              messages={messages.filter(msg => 
+                searchQuery ? msg.content.toLowerCase().includes(searchQuery.toLowerCase()) : true
+              )}
               currentUserId={user.id}
               otherUserId={selectedFriendId!}
               isLoading={isLoading}
@@ -545,6 +559,8 @@ export const ChatInterface = () => {
               selectedFile={selectedFile}
               onClearFile={() => setSelectedFile(null)}
               onVoiceRecordingComplete={handleVoiceRecording}
+              isOneTimeView={isOneTimeView}
+              onOneTimeViewToggle={setIsOneTimeView}
             />
           </>
         ) : (

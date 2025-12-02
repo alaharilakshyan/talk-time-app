@@ -12,6 +12,8 @@ interface Message {
   file_name: string | null;
   is_deleted: boolean;
   created_at: string;
+  is_one_time_view?: boolean;
+  viewed_by?: string[];
   sender?: {
     username: string;
     avatar_url: string | null;
@@ -24,6 +26,7 @@ interface ChatMessagesProps {
   otherUserId: string;
   isLoading?: boolean;
   onDelete?: (messageId: string) => void;
+  onForward?: (message: Message) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -31,7 +34,8 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   currentUserId,
   otherUserId,
   isLoading = false,
-  onDelete
+  onDelete,
+  onForward
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +70,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             currentUserId={currentUserId}
             otherUserId={otherUserId}
             onDelete={onDelete}
+            onForward={onForward}
           />
         ))}
         <div ref={scrollRef} />

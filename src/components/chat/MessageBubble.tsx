@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Download, ExternalLink, Trash2, Volume2, Pause, Play, Eye } from 'lucide-react';
+import { FileText, Download, ExternalLink, Trash2, Volume2, Pause, Play, Eye, Forward, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,9 +47,10 @@ interface MessageBubbleProps {
   currentUserId: string;
   otherUserId: string;
   onDelete?: (messageId: string) => void;
+  onForward?: (message: Message) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, currentUserId, otherUserId, onDelete }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, currentUserId, otherUserId, onDelete, onForward }) => {
   const { toast } = useToast();
   const isImage = message.file_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(message.file_url);
   const isVideo = message.file_url && /\.(mp4|webm|ogg)$/i.test(message.file_url);
@@ -184,17 +191,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSent, c
           onMouseUp={handleTouchEnd}
           onMouseLeave={handleTouchEnd}
         >
-          {/* Delete button */}
-          {isSent && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Message actions dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`absolute ${isSent ? '-left-8' : '-right-8'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0`}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isSent ? 'end' : 'start'} className="w-40">
+              {onForward && (
+                <DropdownMenuItem onClick={() => onForward(message)}>
+                  <Forward className="h-4 w-4 mr-2" />
+                  Forward
+                </DropdownMenuItem>
+              )}
+              {isSent && (
+                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           {/* One-time view image */}
           {isOneTimeView && message.file_url ? (

@@ -3,15 +3,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLiveNotifications } from '@/hooks/useLiveNotifications';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { encryptMessage } from '@/utils/encryption';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { FloatingUserSidebar } from './FloatingUserSidebar';
 import { EmptyChat } from './EmptyChat';
-import { Badge } from '@/components/ui/badge';
 import { UserProfileDialog } from './UserProfileDialog';
-import { UserPlus } from 'lucide-react';
+import { ForwardMessageDialog } from './ForwardMessageDialog';
+import { CallDialog } from './CallDialog';
+import { GroupList } from './GroupList';
+import { GroupChatInterface } from './GroupChatInterface';
+import { CreateGroupDialog } from './CreateGroupDialog';
+import { UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Message {
   id: string;
@@ -33,7 +39,9 @@ interface Message {
   file_name: string | null;
   is_deleted: boolean;
   created_at: string;
-  sender: {
+  is_one_time_view?: boolean;
+  viewed_by?: string[];
+  sender?: {
     username: string;
     avatar_url: string | null;
   };
@@ -54,6 +62,7 @@ export const ChatInterface = () => {
 
   const [friends, setFriends] = useState<Profile[]>([]);
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -63,20 +72,26 @@ export const ChatInterface = () => {
   const [addFriendDialog, setAddFriendDialog] = useState(false);
   const [friendUserTag, setFriendUserTag] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [chatBackground, setChatBackground] = useState<string | null>(null);
   const [isOneTimeView, setIsOneTimeView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
+  const [callUser, setCallUser] = useState<Profile | null>(null);
+  const [isVideoCall, setIsVideoCall] = useState(false);
+  const [groupRefreshTrigger, setGroupRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState<'chats' | 'groups'>('chats');
 
   const selectedFriend = friends.find(f => f.id === selectedFriendId);
+
+  // Typing indicator hook
+  const { typingUsers, handleTyping, stopTyping } = useTypingIndicator(user?.id, selectedFriendId);
 
   // Live notifications for new messages
   useLiveNotifications({
     userId: user?.id || '',
     currentChatUserId: selectedFriendId,
-    onNewMessage: (newMessage) => {
-      // Refresh friends list to update unread counts
+    onNewMessage: () => {
       fetchFriends();
     },
   });
@@ -85,7 +100,6 @@ export const ChatInterface = () => {
   const fetchFriends = async () => {
     if (!user) return;
 
-    // Fetch friends where I'm the user OR where I'm the friend (bidirectional)
     const { data: sentFriends, error: sentError } = await supabase
       .from('friends')
       .select(`
@@ -158,15 +172,12 @@ export const ChatInterface = () => {
   };
 
   useEffect(() => {
-    // Load chat background from localStorage
     const loadBackground = () => {
       const savedBackground = localStorage.getItem('chatBackground');
       setChatBackground(savedBackground);
     };
     
     loadBackground();
-    
-    // Listen for storage changes
     window.addEventListener('storage', loadBackground);
     return () => window.removeEventListener('storage', loadBackground);
   }, []);
@@ -175,7 +186,6 @@ export const ChatInterface = () => {
     if (user) {
       fetchFriends();
 
-      // Subscribe to presence for online status
       const presenceChannel = supabase.channel('online-users');
       
       presenceChannel
@@ -189,13 +199,13 @@ export const ChatInterface = () => {
           );
           setOnlineUsers(online);
         })
-        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        .on('presence', { event: 'join' }, ({ newPresences }) => {
           const userId = (newPresences[0] as any)?.user_id;
           if (userId) {
             setOnlineUsers(prev => new Set([...prev, userId]));
           }
         })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
           const userId = (leftPresences[0] as any)?.user_id;
           if (userId) {
             setOnlineUsers(prev => {
@@ -211,7 +221,6 @@ export const ChatInterface = () => {
           }
         });
 
-      // Subscribe to friend updates
       const channel = supabase
         .channel('friends-updates')
         .on(
@@ -220,7 +229,6 @@ export const ChatInterface = () => {
             event: '*',
             schema: 'public',
             table: 'friends',
-            filter: `user_id=eq.${user.id},friend_id=eq.${user.id}`,
           },
           (payload: any) => {
             if (payload.eventType === 'UPDATE' && payload.new.status === 'accepted') {
@@ -243,9 +251,9 @@ export const ChatInterface = () => {
 
   useEffect(() => {
     if (selectedFriendId) {
+      setSelectedGroupId(null);
       fetchMessages(selectedFriendId);
       
-      // Subscribe to new messages
       const channel = supabase
         .channel('messages')
         .on(
@@ -254,11 +262,16 @@ export const ChatInterface = () => {
             event: 'INSERT',
             schema: 'public',
             table: 'messages',
-            filter: `receiver_id=eq.${user?.id}`,
           },
           (payload: any) => {
-            if (payload.new.sender_id === selectedFriendId || payload.new.receiver_id === selectedFriendId) {
-              setMessages(prev => [...prev, payload.new]);
+            if (
+              (payload.new.sender_id === selectedFriendId && payload.new.receiver_id === user?.id) ||
+              (payload.new.sender_id === user?.id && payload.new.receiver_id === selectedFriendId)
+            ) {
+              setMessages(prev => {
+                if (prev.some(m => m.id === payload.new.id)) return prev;
+                return [...prev, payload.new];
+              });
             }
           }
         )
@@ -270,7 +283,6 @@ export const ChatInterface = () => {
             table: 'messages',
           },
           (payload: any) => {
-            // Update message if it's deleted or modified
             if (payload.new.sender_id === selectedFriendId || payload.new.receiver_id === selectedFriendId) {
               setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
             }
@@ -286,6 +298,17 @@ export const ChatInterface = () => {
 
   const handleFriendSelect = (friendId: string) => {
     setSelectedFriendId(friendId);
+    setSelectedGroupId(null);
+  };
+
+  const handleGroupSelect = (groupId: string) => {
+    setSelectedGroupId(groupId);
+    setSelectedFriendId(null);
+  };
+
+  const handleMessageChange = (value: string) => {
+    setNewMessage(value);
+    handleTyping();
   };
 
   const handleSendMessage = async () => {
@@ -293,6 +316,7 @@ export const ChatInterface = () => {
 
     setIsSending(true);
     setUploading(true);
+    stopTyping();
 
     let fileUrl = null;
     let fileName = null;
@@ -326,7 +350,6 @@ export const ChatInterface = () => {
       fileName = selectedFile.name;
       fileSize = selectedFile.size;
       
-      // Check if it's a voice message
       if (selectedFile.type.startsWith('audio/') && !messageContent) {
         messageContent = '[Voice message]';
       } else if (!messageContent) {
@@ -334,7 +357,6 @@ export const ChatInterface = () => {
       }
     }
 
-    // Encrypt message content with conversation key (both users can decrypt)
     const encryptedContent = await encryptMessage(messageContent, user.id, selectedFriendId);
 
     const isImage = selectedFile && selectedFile.type.startsWith('image/');
@@ -376,7 +398,6 @@ export const ChatInterface = () => {
 
   const handleVoiceRecording = (file: File) => {
     setSelectedFile(file);
-    // Auto-send voice message
     setTimeout(() => handleSendMessage(), 100);
   };
 
@@ -384,7 +405,6 @@ export const ChatInterface = () => {
     if (!user || !friendUserTag.trim()) return;
 
     try {
-      // Find user by tag
       const { data: friendProfile, error: profileError } = await supabase
         .from('profiles')
         .select('id, username')
@@ -409,7 +429,6 @@ export const ChatInterface = () => {
         return;
       }
 
-      // Check if already friends
       const { data: existingFriend } = await supabase
         .from('friends')
         .select('*')
@@ -424,13 +443,12 @@ export const ChatInterface = () => {
         return;
       }
 
-      // Send friend request
       const { error: insertError } = await supabase
         .from('friends')
         .insert({
           user_id: user.id,
           friend_id: friendProfile.id,
-          status: 'accepted' // Auto-accept for simplicity
+          status: 'accepted'
         });
 
       if (insertError) {
@@ -460,17 +478,31 @@ export const ChatInterface = () => {
     }
   };
 
+  const handleVoiceCall = () => {
+    if (selectedFriend) {
+      setCallUser(selectedFriend);
+      setIsVideoCall(false);
+    }
+  };
+
+  const handleVideoCall = () => {
+    if (selectedFriend) {
+      setCallUser(selectedFriend);
+      setIsVideoCall(true);
+    }
+  };
+
   if (!user) return null;
 
-  // Map friends with online status
   const friendsWithStatus = friends.map(friend => ({
     ...friend,
     isOnline: onlineUsers.has(friend.id)
   }));
 
+  const isTyping = selectedFriendId ? typingUsers.has(selectedFriendId) : false;
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex max-w-7xl mx-auto p-2 md:p-6 pb-20 md:pb-6 relative"
->
+    <div className="h-[calc(100vh-4rem)] flex max-w-7xl mx-auto p-2 md:p-6 pb-20 md:pb-6 relative gap-4">
       {/* Floating Friends Sidebar */}
       <FloatingUserSidebar
         users={friendsWithStatus}
@@ -480,6 +512,7 @@ export const ChatInterface = () => {
         currentUserId={user.id}
         onRefresh={fetchFriends}
         isRefreshing={false}
+        onGroupSelect={handleGroupSelect}
       />
 
       {/* Add Friend Dialog */}
@@ -487,15 +520,18 @@ export const ChatInterface = () => {
         <DialogTrigger asChild>
           <Button 
             data-add-friend-trigger
-            className="fixed left-4 top-36 z-40 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all hidden md:flex"
+            className="fixed left-4 top-36 z-40 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all hidden md:flex bg-gradient-to-br from-primary to-accent hover:opacity-90"
             size="icon"
           >
             <UserPlus className="h-6 w-6" />
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Friend</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Add Friend
+            </DialogTitle>
             <DialogDescription>
               Enter your friend's user tag (the 4-digit number) to add them.
             </DialogDescription>
@@ -509,14 +545,44 @@ export const ChatInterface = () => {
                 value={friendUserTag}
                 onChange={(e) => setFriendUserTag(e.target.value)}
                 maxLength={4}
+                className="mt-2"
               />
             </div>
-            <Button onClick={handleAddFriend} className="w-full">
+            <Button onClick={handleAddFriend} className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
               Add Friend
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Groups Panel - Desktop */}
+      <div className="hidden md:flex w-72 flex-col bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden shadow-xl">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col">
+          <TabsList className="w-full rounded-none bg-muted/30 p-1">
+            <TabsTrigger value="chats" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Chats
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Groups
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="chats" className="flex-1 m-0 p-2">
+            <div className="text-xs text-muted-foreground text-center py-2">
+              Use the floating sidebar to select a chat
+            </div>
+          </TabsContent>
+          <TabsContent value="groups" className="flex-1 m-0 flex flex-col">
+            <div className="p-2 border-b border-border/50">
+              <CreateGroupDialog onGroupCreated={() => setGroupRefreshTrigger(prev => prev + 1)} />
+            </div>
+            <GroupList
+              selectedGroupId={selectedGroupId}
+              onGroupSelect={handleGroupSelect}
+              refreshTrigger={groupRefreshTrigger}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Chat Area */}
       <div 
@@ -528,18 +594,22 @@ export const ChatInterface = () => {
           backgroundAttachment: 'fixed'
         } : undefined}
       >
-        {selectedFriend ? (
+        {selectedGroupId ? (
+          <GroupChatInterface groupId={selectedGroupId} onBack={() => setSelectedGroupId(null)} />
+        ) : selectedFriend ? (
           <>
             <ChatHeader
               selectedUser={selectedFriend}
               isOnline={onlineUsers.has(selectedFriendId!)}
-              isTyping={typingUsers.has(selectedFriendId!)}
+              isTyping={isTyping}
               isConnected={true}
               onRefresh={() => fetchMessages(selectedFriendId!)}
               isRefreshing={isLoading}
               onUserClick={() => setProfileDialogOpen(true)}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              onVoiceCall={handleVoiceCall}
+              onVideoCall={handleVideoCall}
             />
             <ChatMessages
               messages={messages.filter(msg => 
@@ -549,10 +619,11 @@ export const ChatInterface = () => {
               otherUserId={selectedFriendId!}
               isLoading={isLoading}
               onDelete={(messageId) => setMessages(prev => prev.map(m => m.id === messageId ? { ...m, is_deleted: true } : m))}
+              onForward={(message) => setForwardMessage(message)}
             />
             <ChatInput
               value={newMessage}
-              onChange={setNewMessage}
+              onChange={handleMessageChange}
               onSend={handleSendMessage}
               isDisabled={isSending || uploading}
               onFileSelect={setSelectedFile}
@@ -577,6 +648,26 @@ export const ChatInterface = () => {
           currentUserId={user.id}
         />
       )}
+
+      {/* Forward Message Dialog */}
+      <ForwardMessageDialog
+        open={!!forwardMessage}
+        onOpenChange={(open) => !open && setForwardMessage(null)}
+        message={forwardMessage ? {
+          id: forwardMessage.id,
+          content: forwardMessage.content,
+          file_url: forwardMessage.file_url,
+          file_name: forwardMessage.file_name,
+        } : null}
+      />
+
+      {/* Call Dialog */}
+      <CallDialog
+        open={!!callUser}
+        onOpenChange={(open) => !open && setCallUser(null)}
+        user={callUser}
+        isVideo={isVideoCall}
+      />
     </div>
   );
 };
